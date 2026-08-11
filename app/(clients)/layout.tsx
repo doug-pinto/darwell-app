@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { ClientSidebar } from "@/components/client-sidebar";
 
 export default function ClientLayout({
   children,
@@ -6,32 +6,14 @@ export default function ClientLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <div>
-      <aside>
-        <h2>Darwell</h2>
+    <div className="min-h-screen bg-muted/30">
+      <div className="flex min-h-screen">
+        <ClientSidebar />
 
-        <nav>
-          <ul>
-            <li>
-              <Link href="/dashboard">Overview</Link>
-            </li>
-            <li>
-              <Link href="/audit">Audit</Link>
-            </li>
-            <li>
-              <Link href="/roadmap">Roadmap</Link>
-            </li>
-            <li>
-              <Link href="/formations">Formations</Link>
-            </li>
-            <li>
-              <Link href="/documents">Documents</Link>
-            </li>
-          </ul>
-        </nav>
-      </aside>
-
-      <main>{children}</main>
+        <main className="flex-1 p-10">
+          {children}
+        </main>
+      </div>
     </div>
   );
 }

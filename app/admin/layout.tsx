@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { AdminSidebar } from "@/components/admin-sidebar";
 
 export default function AdminLayout({
   children,
@@ -6,23 +6,14 @@ export default function AdminLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <div>
-      <aside>
-        <h2>Darwell Admin</h2>
+    <div className="min-h-screen bg-muted/30">
+      <div className="flex min-h-screen">
+        <AdminSidebar />
 
-        <nav>
-          <ul>
-            <li>
-              <Link href="/admin">Dashboard</Link>
-            </li>
-            <li>
-              <Link href="/admin/clients">Clients</Link>
-            </li>
-          </ul>
-        </nav>
-      </aside>
-
-      <main>{children}</main>
+        <main className="flex-1 p-10">
+          {children}
+        </main>
+      </div>
     </div>
   );
 }
