@@ -49,18 +49,57 @@ export function LoginForm() {
 
     const supabase = createClient();
 
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    // 1. Connexion
+    const { data: authData, error: authError } =
+      await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
 
-    if (error) {
-      setError("Email ou mot de passe incorrect.");
+    if (authError) {
+      console.error("AUTH ERROR:", authError);
+
+      setError(`Erreur connexion : ${authError.message}`);
       setLoading(false);
       return;
     }
 
-    router.push("/admin");
+    console.log("AUTH OK:", authData.user.id);
+
+    // 2. Récupération du profil
+    const { data: profile, error: profileError } = await supabase
+      .from("profiles")
+      .select("role, company_id")
+      .eq("id", authData.user.id)
+      .single();
+
+    if (profileError) {
+      console.error("PROFILE ERROR:", profileError);
+
+      setError(`Erreur profil : ${profileError.message}`);
+      setLoading(false);
+      return;
+    }
+
+    if (!profile) {
+      setError("Aucun profil trouvé pour cet utilisateur.");
+      setLoading(false);
+      return;
+    }
+
+    console.log("PROFILE OK:", profile);
+
+    // 3. Redirection selon le rôle
+    if (profile.role === "admin") {
+      router.push("/admin");
+    } else if (profile.role === "client") {
+      router.push("/dashboard");
+    } else {
+      setError(`Rôle inconnu : ${profile.role}`);
+      setLoading(false);
+      return;
+    }
+
     router.refresh();
   }
 
@@ -107,17 +146,9 @@ export function LoginForm() {
         </button>
       </div>
 
-      {error && (
-        <p className="text-sm text-red-600">
-          {error}
-        </p>
-      )}
+      {error && <p className="text-sm text-red-600">{error}</p>}
 
-      {message && (
-        <p className="text-sm text-green-600">
-          {message}
-        </p>
-      )}
+      {message && <p className="text-sm text-green-600">{message}</p>}
 
       <Button
         type="submit"
