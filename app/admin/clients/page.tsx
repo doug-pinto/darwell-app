@@ -25,9 +25,6 @@ export default async function ClientsPage() {
       Clients
     </h1>
 
-    <p className="mt-2 text-muted-foreground">
-      Gérez les entreprises et leurs prestations Darwell.
-    </p>
   </div>
 
   <Link
@@ -44,26 +41,34 @@ export default async function ClientsPage() {
           <div className="divide-y">
             {clients.map((client) => (
               <Link
-                key={client.id}
-                href={`/admin/clients/${client.slug}`}
-                className="flex items-center justify-between p-5 transition-colors hover:bg-muted/50"
-              >
-                <div className="flex items-center gap-8">
-                  <div className="w-40">
-                    <p className="font-medium">{client.name}</p>
-                  </div>
+  key={client.id}
+  href={`/admin/clients/${client.slug}`}
+  className="grid grid-cols-[240px_140px_140px_1fr_24px] items-center gap-4 px-7 py-5 transition-colors hover:bg-muted/50"
+>
+  <p className="font-medium">
+    {client.name}
+  </p>
 
-                  <Badge variant="secondary">
-                    {client.type === "audit" ? "Audit" : "Formation"}
-                  </Badge>
+  <div>
+    <Badge variant="secondary">
+      {client.type === "audit" ? "Audit" : "Formation"}
+    </Badge>
+  </div>
 
-                  <span className="text-sm text-muted-foreground">
-                    {client.status}
-                  </span>
-                </div>
+  <span className="text-sm text-muted-foreground">
+    {client.status === "active"
+      ? "Actif"
+      : client.status === "completed"
+        ? "Terminé"
+        : client.status === "pending"
+          ? "En attente"
+          : client.status}
+  </span>
 
-                <ArrowRight className="h-4 w-4 text-muted-foreground" />
-              </Link>
+  <div />
+
+  <ArrowRight className="h-4 w-4 text-muted-foreground" />
+</Link>
             ))}
           </div>
         </CardContent>

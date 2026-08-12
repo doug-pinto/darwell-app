@@ -1,10 +1,34 @@
-import { AdminSidebar } from "@/components/admin-sidebar";
+import { redirect } from "next/navigation";
 
-export default function AdminLayout({
+import { AdminSidebar } from "@/components/admin-sidebar";
+import { createClient } from "@/lib/supabase/server";
+
+export default async function AdminLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const supabase = await createClient();
+
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
+
+  if (userError || !user) {
+    redirect("/login");
+  }
+
+  const { data: profile, error: profileError } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .single();
+
+  if (profileError || profile?.role !== "admin") {
+    redirect("/dashboard");
+  }
+
   return (
     <div className="h-screen overflow-hidden bg-background p-4">
       <div className="flex h-full overflow-hidden rounded-3xl border bg-muted/40 shadow-sm">
