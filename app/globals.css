@@ -7,9 +7,10 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-sans);
-  --font-mono: var(--font-geist-mono);
-  --font-heading: var(--font-sans);
+
+  --font-sans: var(--font-inter);
+--font-heading: var(--font-inter);
+
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -18,27 +19,51 @@
   --color-sidebar-primary: var(--sidebar-primary);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar: var(--sidebar);
+
   --color-chart-5: var(--chart-5);
   --color-chart-4: var(--chart-4);
   --color-chart-3: var(--chart-3);
   --color-chart-2: var(--chart-2);
   --color-chart-1: var(--chart-1);
+
   --color-ring: var(--ring);
   --color-input: var(--input);
   --color-border: var(--border);
   --color-destructive: var(--destructive);
+
   --color-accent-foreground: var(--accent-foreground);
   --color-accent: var(--accent);
+
   --color-muted-foreground: var(--muted-foreground);
   --color-muted: var(--muted);
+
   --color-secondary-foreground: var(--secondary-foreground);
   --color-secondary: var(--secondary);
+
   --color-primary-foreground: var(--primary-foreground);
   --color-primary: var(--primary);
+
   --color-popover-foreground: var(--popover-foreground);
   --color-popover: var(--popover);
+
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
+
+  /*
+   * Couleurs spécifiques à Darwell.
+   * Elles deviennent utilisables directement avec Tailwind :
+   *
+   * bg-darwell-blue
+   * text-darwell-blue
+   * bg-darwell-soft
+   * etc.
+   */
+  --color-darwell-blue: var(--darwell-blue);
+  --color-darwell-blue-hover: var(--darwell-blue-hover);
+  --color-darwell-lavender: var(--darwell-lavender);
+  --color-darwell-soft: var(--darwell-soft);
+  --color-darwell-ink: var(--darwell-ink);
+
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -48,83 +73,197 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
+/* =========================================================
+   DARWELL — LIGHT THEME
+   ========================================================= */
+
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  /*
+   * Darwell brand
+   */
+
+  --darwell-blue: #2414d8;
+  --darwell-blue-hover: #1d0fc0;
+  --darwell-lavender: #9faeff;
+  --darwell-soft: #eef0ff;
+  --darwell-ink: #17171c;
+
+  /*
+   * Application
+   */
+
+  --background: #f6f7fb;
+  --foreground: #17171c;
+
+  /*
+   * Cards / surfaces
+   */
+
+  --card: #ffffff;
+  --card-foreground: #17171c;
+
+  --popover: #ffffff;
+  --popover-foreground: #17171c;
+
+  /*
+   * Primary actions
+   *
+   * Le bouton shadcn principal devient automatiquement
+   * bleu Darwell.
+   */
+
+  --primary: #2414d8;
+  --primary-foreground: #ffffff;
+
+  /*
+   * Secondary actions
+   */
+
+  --secondary: #f1f2f6;
+  --secondary-foreground: #27272e;
+
+  /*
+   * Muted content
+   */
+
+  --muted: #f1f2f6;
+  --muted-foreground: #70707b;
+
+  /*
+   * Accent
+   *
+   * Utilisé notamment pour hover/navigation.
+   */
+
+  --accent: #eef0ff;
+  --accent-foreground: #2414d8;
+
+  /*
+   * Destructive
+   */
+
+  --destructive: #dc2626;
+
+  /*
+   * Inputs / borders
+   */
+
+  --border: #e5e6eb;
+  --input: #e2e3e9;
+  --ring: #2414d8;
+
+  /*
+   * Charts
+   *
+   * Palette Darwell utilisable plus tard
+   * pour les scores d'audit.
+   */
+
+  --chart-1: #2414d8;
+  --chart-2: #6254e8;
+  --chart-3: #9faeff;
+  --chart-4: #cbd3ff;
+  --chart-5: #e8ebff;
+
+  /*
+   * Radius
+   *
+   * Un peu plus généreux que shadcn par défaut.
+   */
+
+  --radius: 0.75rem;
+
+  /*
+   * Sidebar
+   */
+
+  --sidebar: #ffffff;
+  --sidebar-foreground: #27272e;
+
+  --sidebar-primary: #2414d8;
+  --sidebar-primary-foreground: #ffffff;
+
+  --sidebar-accent: #eef0ff;
+  --sidebar-accent-foreground: #2414d8;
+
+  --sidebar-border: #e8e8ed;
+  --sidebar-ring: #2414d8;
 }
 
+/* =========================================================
+   DARK THEME
+   ========================================================= */
+
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --background: #111116;
+  --foreground: #f8f8fa;
+
+  --card: #19191f;
+  --card-foreground: #f8f8fa;
+
+  --popover: #19191f;
+  --popover-foreground: #f8f8fa;
+
+  --primary: #7668ff;
+  --primary-foreground: #ffffff;
+
+  --secondary: #24242b;
+  --secondary-foreground: #f8f8fa;
+
+  --muted: #24242b;
+  --muted-foreground: #a3a3ad;
+
+  --accent: #29264d;
+  --accent-foreground: #b8c1ff;
+
+  --destructive: #ef4444;
+
+  --border: rgba(255, 255, 255, 0.1);
+  --input: rgba(255, 255, 255, 0.14);
+  --ring: #7668ff;
+
+  --chart-1: #7668ff;
+  --chart-2: #958aff;
+  --chart-3: #b8c1ff;
+  --chart-4: #d4d9ff;
+  --chart-5: #eceeff;
+
+  --sidebar: #16161b;
+  --sidebar-foreground: #f8f8fa;
+
+  --sidebar-primary: #7668ff;
+  --sidebar-primary-foreground: #ffffff;
+
+  --sidebar-accent: #29264d;
+  --sidebar-accent-foreground: #b8c1ff;
+
+  --sidebar-border: rgba(255, 255, 255, 0.1);
+  --sidebar-ring: #7668ff;
 }
+
+/* =========================================================
+   BASE
+   ========================================================= */
 
 @layer base {
   * {
     @apply border-border outline-ring/50;
   }
-  body {
-    @apply bg-background text-foreground;
-  }
+
   html {
     @apply font-sans;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+  }
+
+  /*
+   * Selection aux couleurs Darwell
+   */
+
+  ::selection {
+    background: #d8ddff;
+    color: #17171c;
   }
 }
