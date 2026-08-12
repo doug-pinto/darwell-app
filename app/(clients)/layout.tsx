@@ -1,3 +1,5 @@
+import { Suspense } from "react";
+
 import { ClientSidebar } from "@/components/client-sidebar";
 import { AdminPreviewBanner } from "@/components/admin-preview-banner";
 
@@ -9,10 +11,14 @@ export default function ClientLayout({
   return (
     <div className="min-h-screen bg-muted/30">
       <div className="flex min-h-screen">
-        <ClientSidebar />
+        <Suspense fallback={null}>
+          <ClientSidebar />
+        </Suspense>
 
         <main className="flex-1 p-10">
-          <AdminPreviewBanner />
+          <Suspense fallback={null}>
+            <AdminPreviewBanner />
+          </Suspense>
 
           {children}
         </main>
