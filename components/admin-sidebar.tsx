@@ -1,7 +1,12 @@
+"use client";
+
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import {
-  LayoutDashboard,
   Building2,
+  LayoutDashboard,
+  LogOut,
+  Settings,
 } from "lucide-react";
 
 const navigation = [
@@ -18,22 +23,45 @@ const navigation = [
 ];
 
 export function AdminSidebar() {
+  const pathname = usePathname();
+
   return (
-    <aside className="flex min-h-screen w-64 flex-col border-r bg-white px-4 py-6">
-      <div className="px-3">
-        <p className="text-lg font-semibold tracking-tight">Darwell</p>
-        <p className="text-sm text-muted-foreground">Admin</p>
+    <aside className="flex w-60 shrink-0 flex-col border-r bg-sidebar px-4 py-5">
+      <div className="px-3 pb-6">
+        <div className="flex items-center gap-3">
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-darwell-blue text-sm font-semibold text-white">
+            D
+          </div>
+
+          <div>
+            <p className="text-sm font-semibold tracking-tight text-sidebar-foreground">
+              Darwell
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Espace administrateur
+            </p>
+          </div>
+        </div>
       </div>
 
-      <nav className="mt-8 space-y-1">
+      <nav className="space-y-1">
         {navigation.map((item) => {
           const Icon = item.icon;
+
+          const isActive =
+            item.href === "/admin"
+              ? pathname === "/admin"
+              : pathname.startsWith(item.href);
 
           return (
             <Link
               key={item.name}
               href={item.href}
-              className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors ${
+                isActive
+                  ? "bg-darwell-soft text-darwell-blue"
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
+              }`}
             >
               <Icon className="h-4 w-4" />
               {item.name}
@@ -41,6 +69,41 @@ export function AdminSidebar() {
           );
         })}
       </nav>
+
+      <div className="mt-auto space-y-1 pt-6">
+        <button
+          type="button"
+          className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+        >
+          <Settings className="h-4 w-4" />
+          Paramètres
+        </button>
+
+        <button
+          type="button"
+          className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+        >
+          <LogOut className="h-4 w-4" />
+          Déconnexion
+        </button>
+
+        <div className="mt-4 rounded-2xl border bg-white p-3">
+          <div className="flex items-center gap-3">
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-darwell-soft text-xs font-semibold text-darwell-blue">
+              DP
+            </div>
+
+            <div className="min-w-0">
+              <p className="truncate text-sm font-medium">
+                Doug Pinto
+              </p>
+              <p className="truncate text-xs text-muted-foreground">
+                Administrateur
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
     </aside>
   );
 }

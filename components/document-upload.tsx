@@ -8,9 +8,10 @@ import { Button } from "@/components/ui/button";
 
 type DocumentUploadProps = {
   companyId: string;
+  onSuccess?: () => void;
 };
 
-export function DocumentUpload({ companyId }: DocumentUploadProps) {
+export function DocumentUpload({ companyId, onSuccess }: DocumentUploadProps) {
   const router = useRouter();
 
   const [file, setFile] = useState<File | null>(null);
@@ -75,6 +76,7 @@ export function DocumentUpload({ companyId }: DocumentUploadProps) {
     setLoading(false);
 
     router.refresh();
+    onSuccess?.();
   }
 
   return (
