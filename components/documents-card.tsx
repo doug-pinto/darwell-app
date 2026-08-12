@@ -94,9 +94,7 @@ export function DocumentsCard({
                                         {document.title}
                                     </p>
 
-                                    <p className="text-sm text-muted-foreground">
-                                        {document.type}
-                                    </p>
+                                    
 
                                     {document.signedUrl && (
                                         <a
