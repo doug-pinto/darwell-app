@@ -1,5 +1,5 @@
 "use client";
-
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -27,22 +27,16 @@ export function AdminSidebar() {
 
   return (
     <aside className="flex w-60 shrink-0 flex-col border-r bg-sidebar px-4 py-5">
-      <div className="px-3 pb-6">
-        <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-darwell-blue text-sm font-semibold text-white">
-            D
-          </div>
-
-          <div>
-            <p className="text-sm font-semibold tracking-tight text-sidebar-foreground">
-              Darwell
-            </p>
-            <p className="text-xs text-muted-foreground">
-              Espace administrateur
-            </p>
-          </div>
-        </div>
-      </div>
+      <div className="px-3">
+  <Image
+    src="/darwell-logo.png"
+    alt="Darwell"
+    width={140}
+    height={48}
+    priority
+    className="h-auto w-32 -translate-x-4"
+  />
+</div>
 
       <nav className="space-y-1">
         {navigation.map((item) => {

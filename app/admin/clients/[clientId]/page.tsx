@@ -39,20 +39,23 @@ export default async function ClientPage({
             `Aucune entreprise trouvée pour le slug: ${clientId}`
         );
     }
-    // Récupération de la session de formation liée à cette entreprise.
-    const { data: trainingSession, error: trainingError } = await supabase
-        .from("training_sessions")
-        .select(
-            "id, title, date, status, description, participants, next_step"
-        )
-        .eq("company_id", company.id)
-        .maybeSingle();
+    // Récupération des sessions de formation liées à cette entreprise.
+const { data: trainingSessions, error: trainingError } = await supabase
+  .from("training_sessions")
+  .select(
+    "id, title, date, status, description, participants, next_step"
+  )
+  .eq("company_id", company.id)
+  .order("date", { ascending: false });
 
-    if (trainingError) {
-        throw new Error(
-            `Impossible de récupérer la formation : ${trainingError.message}`
-        );
-    }
+if (trainingError) {
+  throw new Error(
+    `Impossible de récupérer les formations : ${trainingError.message}`
+  );
+}
+
+// Formation la plus récente affichée dans la fiche client.
+const trainingSession = trainingSessions?.[0] ?? null;
     // Récupération de l'audit associé à l'entreprise.
     const { data: audit, error: auditError } = await supabase
         .from("audits")
@@ -65,6 +68,23 @@ export default async function ClientPage({
             `Impossible de récupérer l'audit : ${auditError.message}`
         );
     }
+
+// Récupération des transcripts associés à l'audit.
+const { data: transcripts, error: transcriptsError } = audit
+  ? await supabase
+      .from("audit_transcripts")
+      .select(
+        "id, interviewee_name, interviewee_role, interview_date, transcript, created_at"
+      )
+      .eq("audit_id", audit.id)
+      .order("interview_date", { ascending: false })
+  : { data: [], error: null };
+
+if (transcriptsError) {
+  throw new Error(
+    `Impossible de récupérer les transcripts : ${transcriptsError.message}`
+  );
+}
 
     // Récupération des utilisateurs associés à cette entreprise.
 const { data: companyUsers, error: usersError } = await supabase
@@ -130,10 +150,13 @@ if (usersError) {
       Modifier
     </Link>
 
-    <Button className="h-10 gap-2 rounded-lg px-4">
-      <ExternalLink className="h-4 w-4" />
-      Voir comme le client
-    </Button>
+    <Link
+  href={`/admin/clients/${company.slug}/preview`}
+  className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+>
+  <ExternalLink className="h-4 w-4" />
+  Voir comme le client
+</Link>
   </div>
 </div>
 
@@ -185,128 +208,145 @@ if (usersError) {
   </CardContent>
 </Card>
 
-                {company.type === "audit" && audit && (
+                {company.type === "audit" && (
   <Card className="rounded-2xl">
     <CardHeader className="border-b pb-5">
       <div className="flex items-center justify-between">
-        <CardTitle className="text-base">Audit IA</CardTitle>
+        <CardTitle className="text-base">
+          Audit IA
+        </CardTitle>
 
-        <Badge variant="secondary">
-          {audit.status === "completed"
-            ? "Terminé"
-            : audit.status === "active"
-            ? "En cours"
-            : audit.status}
-        </Badge>
+        {audit && (
+          <Link
+            href={`/admin/clients/${company.slug}/audit/transcripts/new`}
+            className="inline-flex h-9 items-center justify-center gap-2 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+          >
+            <Plus className="h-4 w-4" />
+            Ajouter un transcript
+          </Link>
+        )}
       </div>
     </CardHeader>
 
     <CardContent className="pt-6">
-      <div className="mb-7">
+      {!audit ? (
         <p className="text-sm text-muted-foreground">
-          Score global
+          Aucun audit renseigné.
         </p>
+      ) : transcripts && transcripts.length > 0 ? (
+        <div className="space-y-3">
+          {transcripts.map((transcript) => (
+            <div
+              key={transcript.id}
+              className="rounded-xl border p-4"
+            >
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="font-medium">
+                    {transcript.interviewee_name}
+                  </p>
 
-        <div className="mt-2 flex items-end gap-1">
-          <p className="text-5xl font-semibold tracking-tight">
-            {audit.global_score ?? "—"}
-          </p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    {transcript.interviewee_role || "Fonction non renseignée"}
+                  </p>
+                </div>
 
-          {audit.global_score != null && (
-            <span className="mb-1 text-lg text-muted-foreground">
-              /100
-            </span>
-          )}
+                {transcript.interview_date && (
+                  <p className="text-sm text-muted-foreground">
+                    {transcript.interview_date}
+                  </p>
+                )}
+              </div>
+            </div>
+          ))}
         </div>
-      </div>
-
-      <div className="space-y-6">
-        <div>
+      ) : (
+        <div className="py-6">
           <p className="text-sm text-muted-foreground">
-            Audit
-          </p>
-          <p className="mt-1 font-medium">
-            {audit.title}
+            Aucun transcript ajouté pour cet audit.
           </p>
         </div>
-
-        <div>
-          <p className="text-sm text-muted-foreground">
-            Résumé
-          </p>
-          <p className="mt-1 text-sm leading-6">
-            {audit.summary ?? "—"}
-          </p>
-        </div>
-
-        <div className="rounded-xl bg-muted/60 p-4">
-          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            Prochaine étape
-          </p>
-
-          <p className="mt-2 text-sm font-medium">
-            {audit.next_step ?? "—"}
-          </p>
-        </div>
-      </div>
+      )}
     </CardContent>
   </Card>
 )}
 
-                {company.type === "formation" && trainingSession && (
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Formation</CardTitle>
-                        </CardHeader>
+{company.type === "formation" && (
+  <Card>
+    <CardHeader>
+      <div className="flex items-center justify-between">
+        <CardTitle>Formation</CardTitle>
 
-                        <CardContent className="space-y-4">
-                            <div>
-                                <p className="text-sm text-muted-foreground">
-                                    Formation
-                                </p>
-                                <p className="font-medium">
-                                    {trainingSession.title}
-                                </p>
-                            </div>
+        {!trainingSession && (
+          <Link
+            href={`/admin/clients/${company.slug}/formations/new`}
+            className="inline-flex h-9 items-center justify-center gap-2 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+          >
+            <Plus className="h-4 w-4" />
+            Ajouter une formation
+          </Link>
+        )}
+      </div>
+    </CardHeader>
 
-                            <div>
-                                <p className="text-sm text-muted-foreground">
-                                    Date
-                                </p>
-                                <p className="font-medium">
-                                    {trainingSession.date}
-                                </p>
-                            </div>
+    <CardContent>
+      {trainingSession ? (
+        <div className="space-y-4">
+          <div>
+            <p className="text-sm text-muted-foreground">
+              Formation
+            </p>
+            <p className="font-medium">
+              {trainingSession.title}
+            </p>
+          </div>
 
-                            <div>
-                                <p className="text-sm text-muted-foreground">
-                                    Participants
-                                </p>
-                                <p className="font-medium">
-                                    {trainingSession.participants ?? "—"}
-                                </p>
-                            </div>
+          <div>
+            <p className="text-sm text-muted-foreground">
+              Date
+            </p>
+            <p className="font-medium">
+              {trainingSession.date}
+            </p>
+          </div>
 
-                            <div>
-                                <p className="text-sm text-muted-foreground">
-                                    Statut
-                                </p>
-                                <p className="font-medium">
-                                    {trainingSession.status}
-                                </p>
-                            </div>
+          <div>
+            <p className="text-sm text-muted-foreground">
+              Participants
+            </p>
+            <p className="font-medium">
+              {trainingSession.participants ?? "—"}
+            </p>
+          </div>
 
-                            <div>
-                                <p className="text-sm text-muted-foreground">
-                                    Prochaine étape
-                                </p>
-                                <p className="font-medium">
-                                    {trainingSession.next_step ?? "—"}
-                                </p>
-                            </div>
-                        </CardContent>
-                    </Card>
-                )}
+          <div>
+            <p className="text-sm text-muted-foreground">
+              Statut
+            </p>
+            <p className="font-medium">
+              {trainingSession.status}
+            </p>
+          </div>
+
+          <div>
+            <p className="text-sm text-muted-foreground">
+              Prochaine étape
+            </p>
+            <p className="font-medium">
+              {trainingSession.next_step ?? "—"}
+            </p>
+          </div>
+        </div>
+      ) : (
+        <div className="py-6">
+          <p className="text-sm text-muted-foreground">
+            Aucune formation renseignée.
+          </p>
+        </div>
+      )}
+    </CardContent>
+  </Card>
+)}
 
                 <Card className="rounded-2xl">
                     <DocumentsCard
