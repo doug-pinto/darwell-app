@@ -3,7 +3,13 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, Trash2, X } from "lucide-react";
-
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { deleteDocument } from "@/app/admin/clients/[clientId]/actions";
 import { Button } from "@/components/ui/button";
 import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -128,13 +134,58 @@ export function DocumentsCard({
                     </p>
                 )}
 
-                {showForm && (
-                    <DocumentUpload
-                        companyId={companyId}
-                        onSuccess={() => setShowForm(false)}
-                    />
-                )}
+
             </CardContent>
+
+            {showForm && (
+    <div
+        className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+        onClick={() => setShowForm(false)}
+    >
+        <div
+            className="w-full max-w-lg rounded-2xl border bg-background shadow-xl"
+            onClick={(event) => event.stopPropagation()}
+        >
+            <div className="flex items-center justify-between border-b px-6 py-5">
+                <div>
+                    <h2 className="text-lg font-semibold">
+                        Ajouter un document
+                    </h2>
+
+                    <p className="mt-1 text-sm text-muted-foreground">
+                        Importez un document dans l'espace client.
+                    </p>
+                </div>
+
+                <button
+                    type="button"
+                    onClick={() => setShowForm(false)}
+                    className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                >
+                    <X className="h-4 w-4" />
+                </button>
+            </div>
+
+<Dialog open={showForm} onOpenChange={setShowForm}>
+  <DialogContent className="sm:max-w-xl">
+    <DialogHeader>
+      <DialogTitle>Ajouter un document</DialogTitle>
+
+      <DialogDescription>
+        Glissez votre fichier dans la zone ci-dessous ou sélectionnez-le
+        depuis votre ordinateur.
+      </DialogDescription>
+    </DialogHeader>
+
+    <DocumentUpload
+      companyId={companyId}
+      onSuccess={() => setShowForm(false)}
+    />
+  </DialogContent>
+</Dialog>
+        </div>
+    </div>
+)}
         </>
     );
 }
