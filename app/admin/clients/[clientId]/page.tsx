@@ -277,15 +277,23 @@ if (usersError) {
       <div className="flex items-center justify-between">
         <CardTitle>Formation</CardTitle>
 
-        {!trainingSession && (
-          <Link
-            href={`/admin/clients/${company.slug}/formations/new`}
-            className="inline-flex h-9 items-center justify-center gap-2 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
-          >
-            <Plus className="h-4 w-4" />
-            Ajouter une formation
-          </Link>
-        )}
+        {trainingSession ? (
+  <Link
+    href={`/admin/clients/${company.slug}/formations/${trainingSession.id}/edit`}
+    className="inline-flex h-9 items-center justify-center gap-2 rounded-lg border bg-background px-4 text-sm font-medium transition-colors hover:bg-muted"
+  >
+    <Pencil className="h-4 w-4" />
+    Modifier
+  </Link>
+) : (
+  <Link
+    href={`/admin/clients/${company.slug}/formations/new`}
+    className="inline-flex h-9 items-center justify-center gap-2 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+  >
+    <Plus className="h-4 w-4" />
+    Ajouter une formation
+  </Link>
+)}
       </div>
     </CardHeader>
 

@@ -84,9 +84,6 @@ export default async function AdminPage() {
           Dashboard
         </h1>
 
-        <p className="mt-2 text-muted-foreground">
-          Vue d’ensemble de l’activité et des clients Darwell.
-        </p>
       </div>
 
       {/* KPI */}
@@ -131,9 +128,6 @@ export default async function AdminPage() {
               Clients
             </CardTitle>
 
-            <p className="mt-1 text-sm text-muted-foreground">
-              Dernières entreprises de votre espace Darwell.
-            </p>
           </div>
 
           <Link

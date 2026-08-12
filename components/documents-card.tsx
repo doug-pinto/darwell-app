@@ -1,8 +1,16 @@
 "use client";
 
-import { useState } from "react";
-import { Plus, X } from "lucide-react";
-
+import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { Plus, Trash2, X } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { deleteDocument } from "@/app/admin/clients/[clientId]/actions";
 import { Button } from "@/components/ui/button";
 import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DocumentUpload } from "@/components/document-upload";
@@ -13,12 +21,40 @@ type DocumentsCardProps = {
         id: string;
         title: string;
         type: string;
+        storage_path: string | null;
         signedUrl: string | null;
     }[];
 };
 
-export function DocumentsCard({ companyId, documents }: DocumentsCardProps) {
+export function DocumentsCard({
+    companyId,
+    documents,
+}: DocumentsCardProps) {
     const [showForm, setShowForm] = useState(false);
+    const [isPending, startTransition] = useTransition();
+    const router = useRouter();
+
+    function handleDelete(
+        documentId: string,
+        storagePath: string | null,
+        title: string
+    ) {
+        const confirmed = window.confirm(
+            `Supprimer définitivement le document "${title}" ?`
+        );
+
+        if (!confirmed) return;
+
+        startTransition(async () => {
+            await deleteDocument({
+                documentId,
+                companyId,
+                storagePath,
+            });
+
+            router.refresh();
+        });
+    }
 
     return (
         <>
@@ -37,7 +73,10 @@ export function DocumentsCard({ companyId, documents }: DocumentsCardProps) {
                         ) : (
                             <Plus className="h-4 w-4" />
                         )}
-                        {showForm ? "Annuler" : "Ajouter un document"}
+
+                        {showForm
+                            ? "Annuler"
+                            : "Ajouter un document"}
                     </Button>
                 </div>
             </CardHeader>
@@ -48,16 +87,14 @@ export function DocumentsCard({ companyId, documents }: DocumentsCardProps) {
                         {documents.map((document) => (
                             <div
                                 key={document.id}
-                                className="rounded-lg border p-3"
+                                className="flex items-center justify-between gap-4 rounded-lg border p-3"
                             >
                                 <div className="space-y-1">
                                     <p className="font-medium">
                                         {document.title}
                                     </p>
 
-                                    <p className="text-sm text-muted-foreground">
-                                        {document.type}
-                                    </p>
+                                    
 
                                     {document.signedUrl && (
                                         <a
@@ -70,6 +107,22 @@ export function DocumentsCard({ companyId, documents }: DocumentsCardProps) {
                                         </a>
                                     )}
                                 </div>
+
+                                <button
+                                    type="button"
+                                    disabled={isPending}
+                                    onClick={() =>
+                                        handleDelete(
+                                            document.id,
+                                            document.storage_path,
+                                            document.title
+                                        )
+                                    }
+                                    className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive disabled:opacity-50"
+                                    aria-label={`Supprimer ${document.title}`}
+                                >
+                                    <Trash2 className="h-4 w-4" />
+                                </button>
                             </div>
                         ))}
                     </div>
@@ -79,13 +132,58 @@ export function DocumentsCard({ companyId, documents }: DocumentsCardProps) {
                     </p>
                 )}
 
-                {showForm && (
-                    <DocumentUpload
-                        companyId={companyId}
-                        onSuccess={() => setShowForm(false)}
-                    />
-                )}
+
             </CardContent>
+
+            {showForm && (
+    <div
+        className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+        onClick={() => setShowForm(false)}
+    >
+        <div
+            className="w-full max-w-lg rounded-2xl border bg-background shadow-xl"
+            onClick={(event) => event.stopPropagation()}
+        >
+            <div className="flex items-center justify-between border-b px-6 py-5">
+                <div>
+                    <h2 className="text-lg font-semibold">
+                        Ajouter un document
+                    </h2>
+
+                    <p className="mt-1 text-sm text-muted-foreground">
+                        Importez un document dans l'espace client.
+                    </p>
+                </div>
+
+                <button
+                    type="button"
+                    onClick={() => setShowForm(false)}
+                    className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                >
+                    <X className="h-4 w-4" />
+                </button>
+            </div>
+
+<Dialog open={showForm} onOpenChange={setShowForm}>
+  <DialogContent className="sm:max-w-xl">
+    <DialogHeader>
+      <DialogTitle>Ajouter un document</DialogTitle>
+
+      <DialogDescription>
+        Glissez votre fichier dans la zone ci-dessous ou sélectionnez-le
+        depuis votre ordinateur.
+      </DialogDescription>
+    </DialogHeader>
+
+    <DocumentUpload
+      companyId={companyId}
+      onSuccess={() => setShowForm(false)}
+    />
+  </DialogContent>
+</Dialog>
+        </div>
+    </div>
+)}
         </>
     );
 }

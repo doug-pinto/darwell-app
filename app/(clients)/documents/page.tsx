@@ -8,9 +8,15 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 
-export default async function DocumentsPage() {
+export default async function DocumentsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ preview?: string }>;
+}) {
   const supabase = await createClient();
+  const { preview } = await searchParams;
 
+  // 1. Utilisateur connecté.
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -19,20 +25,44 @@ export default async function DocumentsPage() {
     return <p>Utilisateur non connecté.</p>;
   }
 
+  // 2. Profil + rôle.
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
-    .select("company_id")
+    .select("role, company_id")
     .eq("id", user.id)
     .single();
 
-  if (profileError || !profile?.company_id) {
+  if (profileError || !profile) {
+    return <p>Profil utilisateur introuvable.</p>;
+  }
+
+  let companyId: string | null = profile.company_id;
+
+  // 3. Preview uniquement pour un admin.
+  if (preview && profile.role === "admin") {
+    const { data: previewCompany, error: previewCompanyError } =
+      await supabase
+        .from("companies")
+        .select("id")
+        .eq("slug", preview)
+        .single();
+
+    if (previewCompanyError || !previewCompany) {
+      return <p>Entreprise introuvable.</p>;
+    }
+
+    companyId = previewCompany.id;
+  }
+
+  if (!companyId) {
     return <p>Aucune entreprise associée à ce compte.</p>;
   }
 
+  // 4. Documents de l'entreprise concernée.
   const { data: documents, error: documentsError } = await supabase
     .from("documents")
     .select("id, title, type, storage_path, created_at")
-    .eq("company_id", profile.company_id)
+    .eq("company_id", companyId)
     .order("created_at", { ascending: false });
 
   if (documentsError) {
@@ -41,6 +71,7 @@ export default async function DocumentsPage() {
     );
   }
 
+  // 5. URLs temporaires pour les fichiers privés.
   const documentsWithUrls = await Promise.all(
     (documents ?? []).map(async (document) => {
       if (!document.storage_path) {
@@ -93,24 +124,20 @@ export default async function DocumentsPage() {
                       <p className="font-medium">
                         {document.title}
                       </p>
-
-                      <p className="text-sm text-muted-foreground">
-                        {document.type}
-                      </p>
                     </div>
                   </div>
 
-{document.signedUrl && (
-  <a
-    href={document.signedUrl}
-    target="_blank"
-    rel="noopener noreferrer"
-    className="inline-flex h-8 items-center justify-center gap-2 rounded-md border px-3 text-sm font-medium hover:bg-muted"
-  >
-    Ouvrir
-    <ExternalLink className="h-4 w-4" />
-  </a>
-)}
+                  {document.signedUrl && (
+                    <a
+                      href={document.signedUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex h-8 items-center justify-center gap-2 rounded-md border px-3 text-sm font-medium hover:bg-muted"
+                    >
+                      Ouvrir
+                      <ExternalLink className="h-4 w-4" />
+                    </a>
+                  )}
                 </div>
               ))}
             </div>
