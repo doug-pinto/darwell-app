@@ -1,4 +1,9 @@
+"use client";
+
 import Link from "next/link";
+import Image from "next/image";
+import { useSearchParams } from "next/navigation";
+
 import {
   LayoutDashboard,
   ClipboardCheck,
@@ -14,6 +19,11 @@ const navigation = [
     icon: LayoutDashboard,
   },
   {
+    name: "Formations",
+    href: "/formations",
+    icon: GraduationCap,
+  },
+  {
     name: "Audit",
     href: "/audit",
     icon: ClipboardCheck,
@@ -24,11 +34,6 @@ const navigation = [
     icon: Map,
   },
   {
-    name: "Formations",
-    href: "/formations",
-    icon: GraduationCap,
-  },
-  {
     name: "Documents",
     href: "/documents",
     icon: FileText,
@@ -36,12 +41,33 @@ const navigation = [
 ];
 
 export function ClientSidebar() {
+  const searchParams = useSearchParams();
+
+  const preview = searchParams.get("preview");
+
+  function getHref(href: string) {
+    if (!preview) {
+      return href;
+    }
+
+    return `${href}?preview=${encodeURIComponent(preview)}`;
+  }
+
   return (
     <aside className="flex min-h-screen w-64 flex-col border-r bg-white px-4 py-6">
-      <div className="px-3">
-        <p className="text-lg font-semibold tracking-tight">Darwell</p>
-        <p className="text-sm text-muted-foreground">Client Portal</p>
-      </div>
+      <Link
+        href={getHref("/dashboard")}
+        className="inline-flex items-center"
+      >
+        <Image
+          src="/darwell-logo.png"
+          alt="Darwell"
+          width={120}
+          height={32}
+          className="h-auto w-[120px]"
+          priority
+        />
+      </Link>
 
       <nav className="mt-8 space-y-1">
         {navigation.map((item) => {
@@ -50,7 +76,7 @@ export function ClientSidebar() {
           return (
             <Link
               key={item.name}
-              href={item.href}
+              href={getHref(item.href)}
               className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
             >
               <Icon className="h-4 w-4" />

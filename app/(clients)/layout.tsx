@@ -1,4 +1,5 @@
 import { ClientSidebar } from "@/components/client-sidebar";
+import { AdminPreviewBanner } from "@/components/admin-preview-banner";
 
 export default function ClientLayout({
   children,
@@ -11,6 +12,8 @@ export default function ClientLayout({
         <ClientSidebar />
 
         <main className="flex-1 p-10">
+          <AdminPreviewBanner />
+
           {children}
         </main>
       </div>
