@@ -1,49 +1,15 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
-
-import { createClient } from "@/lib/supabase/server";
-import { Button } from "@/components/ui/button";
 import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+  ArrowLeft,
+  ArrowRight,
+  Building2,
+  ClipboardList,
+  Zap,
+} from "lucide-react";
 
 export default function NewClientPage() {
-  async function createCompany(formData: FormData) {
-    "use server";
-
-    const supabase = await createClient();
-
-    const name = formData.get("name")?.toString().trim();
-    const slug = formData.get("slug")?.toString().trim().toLowerCase();
-    const type = formData.get("type")?.toString();
-    const status = formData.get("status")?.toString();
-
-    if (!name || !slug || !type || !status) {
-      throw new Error("Tous les champs sont obligatoires.");
-    }
-
-    const { error } = await supabase.from("companies").insert({
-      name,
-      slug,
-      type,
-      status,
-    });
-
-    if (error) {
-      throw new Error(
-        `Impossible de créer le client : ${error.message}`
-      );
-    }
-
-    redirect("/admin/clients");
-  }
-
   return (
-    <div className="mx-auto max-w-2xl">
+    <div className="mx-auto max-w-5xl">
       <Link
         href="/admin/clients"
         className="mb-6 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
@@ -58,117 +24,86 @@ export default function NewClientPage() {
         </h1>
 
         <p className="mt-2 text-muted-foreground">
-          Créez une nouvelle entreprise dans l’espace Darwell.
+          Choisissez comment vous souhaitez créer ce client.
         </p>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Informations du client</CardTitle>
-        </CardHeader>
+      <div className="grid gap-6 md:grid-cols-2">
+        {/* AJOUT RAPIDE */}
+        <Link
+          href="/admin/clients/new/quick"
+          className="group flex flex-col rounded-2xl border bg-white p-7 transition hover:border-[#b8b1ff] hover:shadow-sm"
+        >
+          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#f0efff] text-[#2814e8]">
+            <Zap className="h-5 w-5" />
+          </div>
 
-        <CardContent>
-          <form action={createCompany} className="space-y-6">
-            <div className="space-y-2">
-              <label
-                htmlFor="name"
-                className="text-sm font-medium"
-              >
-                Nom de l’entreprise
-              </label>
+          <h2 className="mt-6 text-xl font-semibold">
+            Ajout rapide
+          </h2>
 
-              <input
-                id="name"
-                name="name"
-                type="text"
-                required
-                placeholder="Ex. Decathlon"
-                className="w-full rounded-md border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
-              />
+          <p className="mt-2 text-sm leading-6 text-muted-foreground">
+            Créez simplement la fiche client avec les informations
+            essentielles.
+          </p>
+
+          <div className="mt-6 space-y-2 text-sm text-muted-foreground">
+            <div className="flex items-center gap-2">
+              <Building2 className="h-4 w-4" />
+              Entreprise
             </div>
 
-            <div className="space-y-2">
-              <label
-                htmlFor="slug"
-                className="text-sm font-medium"
-              >
-                Slug
-              </label>
-
-              <input
-                id="slug"
-                name="slug"
-                type="text"
-                required
-                placeholder="Ex. decathlon"
-                className="w-full rounded-md border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
-              />
-
-              <p className="text-xs text-muted-foreground">
-                Utilisé dans l’URL du client. Exemple : decathlon
-              </p>
+            <div className="flex items-center gap-2">
+              <ClipboardList className="h-4 w-4" />
+              Type de prestation et statut
             </div>
+          </div>
 
-            <div className="space-y-2">
-              <label
-                htmlFor="type"
-                className="text-sm font-medium"
-              >
-                Type de prestation
-              </label>
+          <div className="mt-auto pt-8 flex items-center gap-2 text-sm font-medium text-[#2814e8]">
+            Ajouter rapidement
+            <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+          </div>
+        </Link>
 
-              <select
-                id="type"
-                name="type"
-                required
-                defaultValue=""
-                className="w-full rounded-md border bg-background px-3 py-2 text-sm"
-              >
-                <option value="" disabled>
-                  Sélectionner
-                </option>
+        {/* ONBOARDING COMPLET */}
+        <Link
+          href="/admin/clients/new/onboarding"
+          className="group flex flex-col rounded-2xl border bg-white p-7 transition hover:border-[#b8b1ff] hover:shadow-sm"
+        >
+          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#f0efff] text-[#2814e8]">
+            <ClipboardList className="h-5 w-5" />
+          </div>
 
-                <option value="audit">Audit</option>
-                <option value="formation">Formation</option>
-              </select>
-            </div>
+          <div className="mt-6 flex items-center gap-3">
+            <h2 className="text-xl font-semibold">
+              Onboarding complet
+            </h2>
 
-            <div className="space-y-2">
-              <label
-                htmlFor="status"
-                className="text-sm font-medium"
-              >
-                Statut
-              </label>
+            <span className="rounded-full bg-[#f0efff] px-2.5 py-1 text-xs font-medium text-[#2814e8]">
+              Recommandé
+            </span>
+          </div>
 
-              <select
-                id="status"
-                name="status"
-                required
-                defaultValue="active"
-                className="w-full rounded-md border bg-background px-3 py-2 text-sm"
-              >
-                <option value="active">Actif</option>
-                <option value="completed">Terminé</option>
-                <option value="pending">En attente</option>
-              </select>
-            </div>
+          <p className="mt-2 text-sm leading-6 text-muted-foreground">
+            Créez le client et préparez son dossier administratif et de
+            formation.
+          </p>
 
-            <div className="flex justify-end gap-3">
-<Link
-  href="/admin/clients"
-  className="inline-flex h-9 items-center justify-center rounded-md border bg-background px-4 text-sm font-medium shadow-xs transition-colors hover:bg-accent hover:text-accent-foreground"
->
-  Annuler
-</Link>
+          <div className="mt-6 grid grid-cols-2 gap-2 text-sm text-muted-foreground">
+            <span>Entreprise</span>
+            <span>KBIS & bancaire</span>
+            <span>Formation</span>
+            <span>Participants</span>
+            <span>Documents</span>
+            <span>Validation</span>
+          </div>
 
-<Button type="submit">
-  Créer le client
-</Button>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
+          <div className="mt-auto pt-8 flex items-center gap-2 text-sm font-medium text-[#2814e8]">
+            Démarrer l&apos;onboarding
+            <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+          </div>
+        </Link>
+      </div>
     </div>
   );
 }
