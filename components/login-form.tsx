@@ -14,6 +14,27 @@ export function LoginForm() {
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
+
+  async function handleGoogleLogin() {
+    setGoogleLoading(true);
+    setError("");
+    setMessage("");
+
+    const supabase = createClient();
+
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback`,
+      },
+    });
+
+    if (error) {
+      setError(`Erreur Google : ${error.message}`);
+      setGoogleLoading(false);
+    }
+  }
 
   async function handleForgotPassword() {
     if (!email) {
@@ -49,7 +70,6 @@ export function LoginForm() {
 
     const supabase = createClient();
 
-    // 1. Connexion
     const { data: authData, error: authError } =
       await supabase.auth.signInWithPassword({
         email,
@@ -64,9 +84,6 @@ export function LoginForm() {
       return;
     }
 
-    console.log("AUTH OK:", authData.user.id);
-
-    // 2. Récupération du profil
     const { data: profile, error: profileError } = await supabase
       .from("profiles")
       .select("role, company_id")
@@ -87,9 +104,6 @@ export function LoginForm() {
       return;
     }
 
-    console.log("PROFILE OK:", profile);
-
-    // 3. Redirection selon le rôle
     if (profile.role === "admin") {
       router.push("/admin");
     } else if (profile.role === "client") {
@@ -104,59 +118,123 @@ export function LoginForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="space-y-2">
-        <label htmlFor="email" className="text-sm font-medium">
-          Email
-        </label>
-
-        <input
-          id="email"
-          type="email"
-          value={email}
-          onChange={(event) => setEmail(event.target.value)}
-          required
-          className="w-full rounded-md border bg-background px-3 py-2 text-sm"
-          placeholder="vous@entreprise.com"
-        />
-      </div>
-
-      <div className="space-y-2">
-        <label htmlFor="password" className="text-sm font-medium">
-          Mot de passe
-        </label>
-
-        <input
-          id="password"
-          type="password"
-          value={password}
-          onChange={(event) => setPassword(event.target.value)}
-          required
-          className="w-full rounded-md border bg-background px-3 py-2 text-sm"
-        />
-      </div>
-
-      <div className="flex justify-end">
-        <button
-          type="button"
-          onClick={handleForgotPassword}
-          className="text-sm text-muted-foreground hover:text-foreground"
-        >
-          Mot de passe oublié ?
-        </button>
-      </div>
-
-      {error && <p className="text-sm text-red-600">{error}</p>}
-
-      {message && <p className="text-sm text-green-600">{message}</p>}
-
+    <div>
+      {/* Google */}
       <Button
-        type="submit"
-        className="w-full"
-        disabled={loading}
+        type="button"
+        variant="outline"
+        onClick={handleGoogleLogin}
+        disabled={googleLoading}
+        className="h-[50px] w-full rounded-xl border-[#dfe4ec] bg-white text-base font-medium text-[#111827] hover:bg-[#f8fafc]"
       >
-        {loading ? "Connexion..." : "Se connecter"}
+        <GoogleIcon />
+
+        {googleLoading ? "Connexion..." : "Continuer avec Google"}
       </Button>
-    </form>
+
+      {/* Separator */}
+      <div className="my-7 flex items-center gap-4">
+        <div className="h-px flex-1 bg-[#e3e8ef]" />
+
+        <span className="text-xs font-medium uppercase tracking-[0.08em] text-[#9aa8bf]">
+          ou
+        </span>
+
+        <div className="h-px flex-1 bg-[#e3e8ef]" />
+      </div>
+
+      {/* Email login */}
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="space-y-2">
+          <label htmlFor="email" className="text-sm font-medium">
+            Adresse email
+          </label>
+
+          <input
+            id="email"
+            type="email"
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+            required
+            autoComplete="email"
+            className="h-[50px] w-full rounded-xl border border-[#dfe4ec] bg-white px-4 text-sm outline-none transition focus:border-[#9587ff] focus:ring-2 focus:ring-[#9587ff]/15"
+            placeholder="prenom@entreprise.com"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <label htmlFor="password" className="text-sm font-medium">
+              Mot de passe
+            </label>
+
+            <button
+              type="button"
+              onClick={handleForgotPassword}
+              className="text-sm font-medium text-[#2412d8] transition hover:opacity-70"
+            >
+              Mot de passe oublié ?
+            </button>
+          </div>
+
+          <input
+            id="password"
+            type="password"
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+            required
+            autoComplete="current-password"
+            className="h-[50px] w-full rounded-xl border border-[#dfe4ec] bg-white px-4 text-sm outline-none transition focus:border-[#9587ff] focus:ring-2 focus:ring-[#9587ff]/15"
+          />
+        </div>
+
+        {error && (
+          <p className="text-sm text-red-600">
+            {error}
+          </p>
+        )}
+
+        {message && (
+          <p className="text-sm text-green-600">
+            {message}
+          </p>
+        )}
+
+        <Button
+          type="submit"
+          disabled={loading}
+          className="h-[54px] w-full rounded-xl bg-[#2814e8] text-base font-medium text-white hover:bg-[#2110c9]"
+        >
+          {loading ? "Connexion..." : "Se connecter"}
+        </Button>
+      </form>
+    </div>
+  );
+}
+
+function GoogleIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className="mr-2 h-5 w-5"
+      aria-hidden="true"
+    >
+      <path
+        fill="#4285F4"
+        d="M21.35 12.27c0-.79-.07-1.55-.2-2.27H12v4.3h5.23a4.47 4.47 0 0 1-1.94 2.93v2.79h3.14c1.84-1.69 2.92-4.18 2.92-7.75Z"
+      />
+      <path
+        fill="#34A853"
+        d="M12 21.75c2.63 0 4.83-.87 6.44-2.36l-3.14-2.79c-.87.58-1.98.93-3.3.93-2.54 0-4.69-1.72-5.46-4.03H3.29v2.88A9.75 9.75 0 0 0 12 21.75Z"
+      />
+      <path
+        fill="#FBBC05"
+        d="M6.54 13.5A5.86 5.86 0 0 1 6.24 12c0-.52.1-1.03.3-1.5V7.62H3.29A9.75 9.75 0 0 0 2.25 12c0 1.57.38 3.05 1.04 4.38l3.25-2.88Z"
+      />
+      <path
+        fill="#EA4335"
+        d="M12 6.47c1.43 0 2.71.49 3.72 1.45l2.79-2.79A9.34 9.34 0 0 0 12 2.25a9.75 9.75 0 0 0-8.71 5.37l3.25 2.88C7.31 8.19 9.46 6.47 12 6.47Z"
+      />
+    </svg>
   );
 }
