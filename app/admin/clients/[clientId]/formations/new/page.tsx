@@ -28,7 +28,6 @@ export default async function NewTrainingPage({
     throw new Error("Entreprise introuvable.");
   }
 
-  // On extrait les valeurs nécessaires avant la Server Action.
   const companyId = company.id;
   const companySlug = company.slug;
 
@@ -37,23 +36,31 @@ export default async function NewTrainingPage({
 
     const supabase = await createClient();
 
-    const title = formData.get("title") as string;
     const date = formData.get("date") as string;
     const status = formData.get("status") as string;
-    const participants = Number(formData.get("participants")) || 0;
+    const startTime = formData.get("start_time") as string;
+    const endTime = formData.get("end_time") as string;
+    const location = formData.get("location") as string;
     const description = formData.get("description") as string;
-    const nextStep = formData.get("next_step") as string;
+
+    const priceHtValue = formData.get("price_ht") as string;
+    const priceTtcValue = formData.get("price_ttc") as string;
+
+    const priceHt = priceHtValue ? Number(priceHtValue) : 3000;
+    const priceTtc = priceTtcValue ? Number(priceTtcValue) : 3600;
 
     const { error: insertError } = await supabase
       .from("training_sessions")
       .insert({
         company_id: companyId,
-        title,
         date,
         status,
-        participants,
-        description,
-        next_step: nextStep,
+        start_time: startTime || "09:30",
+        end_time: endTime || "17:30",
+        location: location || null,
+        price_ht: priceHt,
+        price_ttc: priceTtc,
+        description: description || null,
       });
 
     if (insertError) {
@@ -68,6 +75,14 @@ export default async function NewTrainingPage({
   return (
     <div className="mx-auto max-w-3xl">
       <div className="mb-6">
+        <Link
+          href={`/admin/clients/${companySlug}`}
+          className="mb-6 inline-flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
+        >
+          <span>←</span>
+          Retour au client
+        </Link>
+
         <h1 className="text-3xl font-semibold tracking-tight">
           Ajouter une formation
         </h1>
@@ -86,23 +101,8 @@ export default async function NewTrainingPage({
 
         <CardContent className="pt-6">
           <form action={createTraining} className="space-y-6">
-            <div className="space-y-2">
-              <label
-                htmlFor="title"
-                className="text-sm font-medium"
-              >
-                Nom de la formation
-              </label>
 
-              <input
-                id="title"
-                name="title"
-                required
-                placeholder="Ex. Formation Intelligence Artificielle"
-                className="w-full rounded-lg border bg-background px-3 py-2 text-sm"
-              />
-            </div>
-
+            {/* Date + statut */}
             <div className="grid gap-6 sm:grid-cols-2">
               <div className="space-y-2">
                 <label
@@ -123,43 +123,120 @@ export default async function NewTrainingPage({
 
               <div className="space-y-2">
                 <label
-                  htmlFor="participants"
+                  htmlFor="status"
                   className="text-sm font-medium"
                 >
-                  Participants
+                  Statut
+                </label>
+
+                <select
+                  id="status"
+                  name="status"
+                  defaultValue="pending"
+                  className="w-full rounded-lg border bg-background px-3 py-2 text-sm"
+                >
+                  <option value="pending">À venir</option>
+                  <option value="completed">Terminée</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Horaires */}
+            <div className="grid gap-6 sm:grid-cols-2">
+              <div className="space-y-2">
+                <label
+                  htmlFor="start_time"
+                  className="text-sm font-medium"
+                >
+                  Heure de début
                 </label>
 
                 <input
-                  id="participants"
-                  name="participants"
-                  type="number"
-                  min="0"
-                  placeholder="12"
+                  id="start_time"
+                  name="start_time"
+                  type="time"
+                  defaultValue="09:30"
+                  className="w-full rounded-lg border bg-background px-3 py-2 text-sm"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label
+                  htmlFor="end_time"
+                  className="text-sm font-medium"
+                >
+                  Heure de fin
+                </label>
+
+                <input
+                  id="end_time"
+                  name="end_time"
+                  type="time"
+                  defaultValue="17:30"
                   className="w-full rounded-lg border bg-background px-3 py-2 text-sm"
                 />
               </div>
             </div>
 
+            {/* Lieu */}
             <div className="space-y-2">
               <label
-                htmlFor="status"
+                htmlFor="location"
                 className="text-sm font-medium"
               >
-                Statut
+                Lieu
               </label>
 
-              <select
-                id="status"
-                name="status"
-                defaultValue="active"
+              <input
+                id="location"
+                name="location"
+                placeholder="Ex. 12 rue de Paris, Lille"
                 className="w-full rounded-lg border bg-background px-3 py-2 text-sm"
-              >
-                <option value="pending">À venir</option>
-                <option value="active">En cours</option>
-                <option value="completed">Terminée</option>
-              </select>
+              />
             </div>
 
+            {/* Tarification */}
+            <div className="grid gap-6 sm:grid-cols-2">
+              <div className="space-y-2">
+                <label
+                  htmlFor="price_ht"
+                  className="text-sm font-medium"
+                >
+                  Prix HT (€)
+                </label>
+
+                <input
+                  id="price_ht"
+                  name="price_ht"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  defaultValue="3000"
+                  className="w-full rounded-lg border bg-background px-3 py-2 text-sm"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label
+                  htmlFor="price_ttc"
+                  className="text-sm font-medium"
+                >
+                  Prix TTC (€)
+                </label>
+
+                <input
+                  id="price_ttc"
+                  name="price_ttc"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  defaultValue="3600"
+                  className="w-full rounded-lg border bg-background px-3 py-2 text-sm"
+                />
+              </div>
+            </div>
+
+            {/* Description */}
             <div className="space-y-2">
               <label
                 htmlFor="description"
@@ -174,22 +251,6 @@ export default async function NewTrainingPage({
                 rows={4}
                 placeholder="Description de la formation..."
                 className="w-full resize-none rounded-lg border bg-background px-3 py-2 text-sm"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <label
-                htmlFor="next_step"
-                className="text-sm font-medium"
-              >
-                Prochaine étape
-              </label>
-
-              <input
-                id="next_step"
-                name="next_step"
-                placeholder="Ex. Envoyer les supports aux participants"
-                className="w-full rounded-lg border bg-background px-3 py-2 text-sm"
               />
             </div>
 
