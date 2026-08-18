@@ -1,7 +1,8 @@
 "use client";
 import Image from "next/image";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
 import {
   Building2,
   LayoutDashboard,
@@ -24,6 +25,21 @@ const navigation = [
 
 export function AdminSidebar() {
   const pathname = usePathname();
+  const router = useRouter();
+
+  async function handleLogout() {
+    const supabase = createClient();
+
+    const { error } = await supabase.auth.signOut();
+
+    if (error) {
+      console.error("Erreur de déconnexion :", error);
+      return;
+    }
+
+    router.push("/login");
+    router.refresh();
+  }
 
   return (
     <aside className="flex w-60 shrink-0 flex-col border-r bg-sidebar px-4 py-5">
@@ -65,21 +81,26 @@ export function AdminSidebar() {
       </nav>
 
       <div className="mt-auto space-y-1 pt-6">
-        <button
-          type="button"
-          className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-        >
-          <Settings className="h-4 w-4" />
-          Paramètres
-        </button>
+        <Link
+  href="/admin/settings"
+  className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors ${
+    pathname.startsWith("/admin/settings")
+      ? "bg-darwell-soft text-darwell-blue"
+      : "text-muted-foreground hover:bg-muted hover:text-foreground"
+  }`}
+>
+  <Settings className="h-4 w-4" />
+  Paramètres
+</Link>
 
         <button
-          type="button"
-          className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-        >
-          <LogOut className="h-4 w-4" />
-          Déconnexion
-        </button>
+  type="button"
+  onClick={handleLogout}
+  className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+>
+  <LogOut className="h-4 w-4" />
+  Déconnexion
+</button>
 
         <div className="mt-4 rounded-2xl border bg-white p-3">
           <div className="flex items-center gap-3">
