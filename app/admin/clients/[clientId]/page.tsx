@@ -43,19 +43,29 @@ export default async function ClientPage({
 const { data: trainingSessions, error: trainingError } = await supabase
   .from("training_sessions")
   .select(
-    "id, title, date, status, description, participants, next_step"
+    "id, date, start_time, end_time, location, status, price_ht, price_ttc, description"
   )
   .eq("company_id", company.id)
   .order("date", { ascending: false });
 
-if (trainingError) {
+// Formation la plus récente affichée dans la fiche client.
+const trainingSession = trainingSessions?.[0] ?? null;
+// Récupération des participants de la formation affichée.
+const { data: trainingParticipants, error: trainingParticipantsError } =
+  trainingSession
+    ? await supabase
+        .from("training_participants")
+        .select("id, first_name, last_name, email")
+        .eq("training_session_id", trainingSession.id)
+        .order("created_at", { ascending: true })
+    : { data: [], error: null };
+
+if (trainingParticipantsError) {
   throw new Error(
-    `Impossible de récupérer les formations : ${trainingError.message}`
+    `Impossible de récupérer les participants : ${trainingParticipantsError.message}`
   );
 }
 
-// Formation la plus récente affichée dans la fiche client.
-const trainingSession = trainingSessions?.[0] ?? null;
     // Récupération de l'audit associé à l'entreprise.
     const { data: audit, error: auditError } = await supabase
         .from("audits")
@@ -272,78 +282,165 @@ if (usersError) {
 )}
 
 {company.type === "formation" && (
-  <Card>
-    <CardHeader>
+  <Card className="rounded-2xl">
+    <CardHeader className="border-b pb-5">
       <div className="flex items-center justify-between">
-        <CardTitle>Formation</CardTitle>
+        <CardTitle className="text-base">
+          Formation
+        </CardTitle>
 
         {trainingSession ? (
-  <Link
-    href={`/admin/clients/${company.slug}/formations/${trainingSession.id}/edit`}
-    className="inline-flex h-9 items-center justify-center gap-2 rounded-lg border bg-background px-4 text-sm font-medium transition-colors hover:bg-muted"
-  >
-    <Pencil className="h-4 w-4" />
-    Modifier
-  </Link>
-) : (
-  <Link
-    href={`/admin/clients/${company.slug}/formations/new`}
-    className="inline-flex h-9 items-center justify-center gap-2 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
-  >
-    <Plus className="h-4 w-4" />
-    Ajouter une formation
-  </Link>
-)}
+          <Link
+            href={`/admin/clients/${company.slug}/formations/${trainingSession.id}/edit`}
+            className="inline-flex h-9 items-center justify-center gap-2 rounded-lg border bg-background px-4 text-sm font-medium transition-colors hover:bg-muted"
+          >
+            <Pencil className="h-4 w-4" />
+            Modifier
+          </Link>
+        ) : (
+          <Link
+            href={`/admin/clients/${company.slug}/formations/new`}
+            className="inline-flex h-9 items-center justify-center gap-2 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+          >
+            <Plus className="h-4 w-4" />
+            Ajouter une formation
+          </Link>
+        )}
       </div>
     </CardHeader>
 
-    <CardContent>
+    <CardContent className="pt-6">
       {trainingSession ? (
-        <div className="space-y-4">
-          <div>
-            <p className="text-sm text-muted-foreground">
-              Formation
-            </p>
-            <p className="font-medium">
-              {trainingSession.title}
-            </p>
+        <div className="space-y-6">
+
+          {/* Informations principales */}
+          <div className="grid gap-6 sm:grid-cols-2">
+            <div>
+              <p className="text-sm text-muted-foreground">
+                Date
+              </p>
+
+              <p className="mt-1 font-medium">
+                {trainingSession.date
+                  ? new Intl.DateTimeFormat("fr-FR", {
+                      day: "numeric",
+                      month: "long",
+                      year: "numeric",
+                      timeZone: "UTC",
+                    }).format(
+                      new Date(`${trainingSession.date}T00:00:00Z`)
+                    )
+                  : "—"}
+              </p>
+            </div>
+
+            <div>
+              <p className="text-sm text-muted-foreground">
+                Statut
+              </p>
+
+              <div className="mt-2">
+                <Badge variant="outline">
+                  {trainingSession.status === "completed"
+                    ? "Terminée"
+                    : "À venir"}
+                </Badge>
+              </div>
+            </div>
+
+            <div>
+              <p className="text-sm text-muted-foreground">
+                Horaires
+              </p>
+
+              <p className="mt-1 font-medium">
+                {trainingSession.start_time
+                  ? trainingSession.start_time.slice(0, 5)
+                  : "09:30"}
+                {" – "}
+                {trainingSession.end_time
+                  ? trainingSession.end_time.slice(0, 5)
+                  : "17:30"}
+              </p>
+            </div>
+
+            <div>
+              <p className="text-sm text-muted-foreground">
+                Lieu
+              </p>
+
+              <p className="mt-1 font-medium">
+                {trainingSession.location || "—"}
+              </p>
+            </div>
+
+            <div>
+              <p className="text-sm text-muted-foreground">
+                Prix HT
+              </p>
+
+              <p className="mt-1 font-medium">
+                {new Intl.NumberFormat("fr-FR", {
+                  style: "currency",
+                  currency: "EUR",
+                  maximumFractionDigits: 0,
+                }).format(trainingSession.price_ht ?? 3000)}
+              </p>
+            </div>
+
+            <div>
+              <p className="text-sm text-muted-foreground">
+                Prix TTC
+              </p>
+
+              <p className="mt-1 font-medium">
+                {new Intl.NumberFormat("fr-FR", {
+                  style: "currency",
+                  currency: "EUR",
+                  maximumFractionDigits: 0,
+                }).format(trainingSession.price_ttc ?? 3600)}
+              </p>
+            </div>
           </div>
 
-          <div>
-            <p className="text-sm text-muted-foreground">
-              Date
-            </p>
-            <p className="font-medium">
-              {trainingSession.date}
-            </p>
+          {/* Participants */}
+          <div className="border-t pt-5">
+            <div className="mb-4 flex items-center justify-between">
+              <p className="text-sm font-medium">
+                Participants
+              </p>
+
+              <Badge variant="secondary">
+                {trainingParticipants?.length ?? 0}
+              </Badge>
+            </div>
+
+            {trainingParticipants &&
+            trainingParticipants.length > 0 ? (
+              <div className="space-y-3">
+                {trainingParticipants.map((participant) => (
+                  <div
+                    key={participant.id}
+                    className="rounded-xl border p-3"
+                  >
+                    <p className="text-sm font-medium">
+                      {participant.first_name}{" "}
+                      {participant.last_name}
+                    </p>
+
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      {participant.email}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                Aucun participant renseigné.
+              </p>
+            )}
           </div>
 
-          <div>
-            <p className="text-sm text-muted-foreground">
-              Participants
-            </p>
-            <p className="font-medium">
-              {trainingSession.participants ?? "—"}
-            </p>
-          </div>
-
-          <div>
-            <p className="text-sm text-muted-foreground">
-              Statut
-            </p>
-            <p className="font-medium">
-              {trainingSession.status}
-            </p>
-          </div>
-
-          <div>
-            <p className="text-sm text-muted-foreground">
-              Prochaine étape
-            </p>
-            <p className="font-medium">
-              {trainingSession.next_step ?? "—"}
-            </p>
-          </div>
         </div>
       ) : (
         <div className="py-6">
