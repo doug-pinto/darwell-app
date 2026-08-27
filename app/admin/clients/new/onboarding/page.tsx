@@ -10,7 +10,6 @@ import {
   Building2,
   Check,
   ClipboardCheck,
-  FileText,
   Landmark,
   Plus,
   Search,
@@ -44,11 +43,6 @@ const steps = [
   },
   {
     id: 5,
-    name: "Documents",
-    icon: FileText,
-  },
-  {
-    id: 6,
     name: "Validation",
     icon: Check,
   },
@@ -92,6 +86,19 @@ type Participant = {
   firstName: string;
   lastName: string;
   email: string;
+};
+
+type PappersCompany = {
+  siren: string | null;
+  name: string | null;
+  legalName: string | null;
+  legalForm: string | null;
+  capital: number | null;
+  siret: string | null;
+  address: string | null;
+  postalCode: string | null;
+  city: string | null;
+  status: "active" | "closed";
 };
 
 export default function OnboardingPage() {
@@ -206,287 +213,261 @@ export default function OnboardingPage() {
   }
 
   async function createCompany() {
-  setCreating(true);
-  setError("");
+    setCreating(true);
+    setError("");
 
-  const supabase = createClient();
+    const supabase = createClient();
 
-  try {
-    if (!formData.companyName.trim() || !formData.serviceType) {
-      throw new Error(
-        "Le nom de l'entreprise et le type de prestation sont obligatoires."
-      );
-    }
-
-    const hasTraining =
-      formData.serviceType === "formation" ||
-      formData.serviceType === "both";
-
-    const slug = formData.companyName
-      .toLowerCase()
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-|-$/g, "");
-
-    if (!slug) {
-      throw new Error(
-        "Impossible de générer un slug valide pour cette entreprise."
-      );
-    }
-
-    /*
-     * 1 — Création de l'entreprise
-     */
-    const { data: company, error: companyError } = await supabase
-      .from("companies")
-      .insert({
-        name: formData.companyName.trim(),
-        slug,
-        type: formData.serviceType,
-        status: "active",
-      })
-      .select("id, slug")
-      .single();
-
-    if (companyError || !company) {
-      throw new Error(
-        `Impossible de créer l'entreprise : ${
-          companyError?.message ?? "Erreur inconnue"
-        }`
-      );
-    }
-
-    const companyId = company.id;
-const companySlug = company.slug;
-
-    /*
-     * 2 — Informations administratives
-     */
-    const { error: detailsError } = await supabase
-      .from("company_details")
-      .insert({
-        company_id: companyId,
-
-        contact_first_name:
-          formData.contactFirstName.trim() || null,
-        contact_last_name:
-          formData.contactLastName.trim() || null,
-        contact_email:
-          formData.contactEmail.trim() || null,
-
-        legal_name:
-          formData.legalName.trim() || null,
-        legal_form:
-          formData.legalForm.trim() || null,
-        siren:
-          formData.siren.trim() || null,
-        siret:
-          formData.siret.trim() || null,
-        share_capital:
-          formData.shareCapital.trim() || null,
-        registration_city:
-          formData.registrationCity.trim() || null,
-
-        headquarters_address:
-          formData.headquartersAddress.trim() || null,
-        postal_code:
-          formData.postalCode.trim() || null,
-        city:
-          formData.city.trim() || null,
-
-        legal_representative:
-          formData.legalRepresentative.trim() || null,
-        legal_representative_role:
-          formData.legalRepresentativeRole.trim() || null,
-
-        account_holder:
-          formData.accountHolder.trim() || null,
-        iban:
-          formData.iban.trim() || null,
-        bic:
-          formData.bic.trim() || null,
-      });
-
-    if (detailsError) {
-      throw new Error(
-        `Impossible d'enregistrer les informations administratives : ${detailsError.message}`
-      );
-    }
-
-    /*
-     * 3 — Création de la formation
-     */
-    let trainingId: string | null = null;
-
-    if (hasTraining) {
-      if (!formData.trainingDate) {
+    try {
+      if (!formData.companyName.trim() || !formData.serviceType) {
         throw new Error(
-          "La date de formation est obligatoire."
+          "Le nom de l'entreprise et le type de prestation sont obligatoires."
         );
       }
 
-      const { data: training, error: trainingError } =
-        await supabase
-          .from("training_sessions")
-          .insert({
-            company_id: companyId,
-            date: formData.trainingDate,
-            start_time:
-              formData.trainingStartTime || "09:30",
-            end_time:
-              formData.trainingEndTime || "17:30",
-            location:
-              formData.trainingLocation.trim() || null,
-            status:
-              formData.trainingStatus || "pending",
-            price_ht:
-              Number(formData.trainingPriceHt) || 3000,
-            price_ttc:
-              Number(formData.trainingPriceTtc) || 3600,
-            description:
-              formData.trainingDescription.trim() || null,
-          })
-          .select("id")
-          .single();
+      const hasTraining =
+        formData.serviceType === "formation" ||
+        formData.serviceType === "both";
 
-      if (trainingError || !training) {
+      const slug = formData.companyName
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-|-$/g, "");
+
+      if (!slug) {
         throw new Error(
-          `Impossible de créer la formation : ${
-            trainingError?.message ?? "Erreur inconnue"
+          "Impossible de générer un slug valide pour cette entreprise."
+        );
+      }
+
+      const { data: company, error: companyError } = await supabase
+        .from("companies")
+        .insert({
+          name: formData.companyName.trim(),
+          slug,
+          type: formData.serviceType,
+          status: "active",
+        })
+        .select("id, slug")
+        .single();
+
+      if (companyError || !company) {
+        throw new Error(
+          `Impossible de créer l'entreprise : ${
+            companyError?.message ?? "Erreur inconnue"
           }`
         );
       }
 
-      trainingId = training.id;
+      const companyId = company.id;
+      const companySlug = company.slug;
 
-      /*
-       * 4 — Participants
-       */
-      if (participants.length > 0) {
-        const participantsToInsert = participants.map(
-          (participant) => ({
-            training_session_id: training.id,
-            first_name: participant.firstName.trim(),
-            last_name: participant.lastName.trim(),
-            email: participant.email.trim(),
-          })
+      const { error: detailsError } = await supabase
+        .from("company_details")
+        .insert({
+          company_id: companyId,
+
+          contact_first_name:
+            formData.contactFirstName.trim() || null,
+          contact_last_name:
+            formData.contactLastName.trim() || null,
+          contact_email:
+            formData.contactEmail.trim() || null,
+
+          legal_name:
+            formData.legalName.trim() || null,
+          legal_form:
+            formData.legalForm.trim() || null,
+          siren:
+            formData.siren.trim() || null,
+          siret:
+            formData.siret.trim() || null,
+          share_capital:
+            formData.shareCapital.trim() || null,
+          registration_city:
+            formData.registrationCity.trim() || null,
+
+          headquarters_address:
+            formData.headquartersAddress.trim() || null,
+          postal_code:
+            formData.postalCode.trim() || null,
+          city:
+            formData.city.trim() || null,
+
+          legal_representative:
+            formData.legalRepresentative.trim() || null,
+          legal_representative_role:
+            formData.legalRepresentativeRole.trim() || null,
+
+          account_holder:
+            formData.accountHolder.trim() || null,
+          iban:
+            formData.iban.trim() || null,
+          bic:
+            formData.bic.trim() || null,
+        });
+
+      if (detailsError) {
+        throw new Error(
+          `Impossible d'enregistrer les informations administratives : ${detailsError.message}`
         );
+      }
 
-        const { error: participantsError } = await supabase
-          .from("training_participants")
-          .insert(participantsToInsert);
+      let trainingId: string | null = null;
 
-        if (participantsError) {
+      if (hasTraining) {
+        if (!formData.trainingDate) {
           throw new Error(
-            `Impossible d'enregistrer les participants : ${participantsError.message}`
+            "La date de formation est obligatoire."
+          );
+        }
+
+        const { data: training, error: trainingError } =
+          await supabase
+            .from("training_sessions")
+            .insert({
+              company_id: companyId,
+              date: formData.trainingDate,
+              start_time:
+                formData.trainingStartTime || "09:30",
+              end_time:
+                formData.trainingEndTime || "17:30",
+              location:
+                formData.trainingLocation.trim() || null,
+              status:
+                formData.trainingStatus || "pending",
+              price_ht:
+                Number(formData.trainingPriceHt) || 3000,
+              price_ttc:
+                Number(formData.trainingPriceTtc) || 3600,
+              description:
+                formData.trainingDescription.trim() || null,
+            })
+            .select("id")
+            .single();
+
+        if (trainingError || !training) {
+          throw new Error(
+            `Impossible de créer la formation : ${
+              trainingError?.message ?? "Erreur inconnue"
+            }`
+          );
+        }
+
+        trainingId = training.id;
+
+        if (participants.length > 0) {
+          const participantsToInsert = participants.map(
+            (participant) => ({
+              training_session_id: training.id,
+              first_name: participant.firstName.trim(),
+              last_name: participant.lastName.trim(),
+              email: participant.email.trim(),
+            })
+          );
+
+          const { error: participantsError } = await supabase
+            .from("training_participants")
+            .insert(participantsToInsert);
+
+          if (participantsError) {
+            throw new Error(
+              `Impossible d'enregistrer les participants : ${participantsError.message}`
+            );
+          }
+        }
+      }
+
+      async function uploadAdministrativeDocument(
+        file: File,
+        type: "kbis" | "rib",
+        title: string
+      ) {
+        const extension =
+          file.name.split(".").pop()?.toLowerCase() || "pdf";
+
+        const storagePath =
+          `${companyId}/administratif/` +
+          `${type}-${Date.now()}.${extension}`;
+
+        const { error: uploadError } =
+          await supabase.storage
+            .from("client-documents")
+            .upload(storagePath, file, {
+              cacheControl: "3600",
+              upsert: false,
+            });
+
+        if (uploadError) {
+          throw new Error(
+            `Impossible d'envoyer le ${title} : ${uploadError.message}`
+          );
+        }
+
+        const { error: documentError } = await supabase
+          .from("documents")
+          .insert({
+            company_id: companyId,
+            title,
+            type,
+            storage_path: storagePath,
+          });
+
+        if (documentError) {
+          await supabase.storage
+            .from("client-documents")
+            .remove([storagePath]);
+
+          throw new Error(
+            `Impossible d'enregistrer le ${title} : ${documentError.message}`
           );
         }
       }
-    }
 
-    /*
-     * 5 — Fonction d'upload KBIS / RIB
-     */
-    async function uploadAdministrativeDocument(
-      file: File,
-      type: "kbis" | "rib",
-      title: string
-    ) {
-      const extension =
-        file.name.split(".").pop()?.toLowerCase() || "pdf";
-
-      const storagePath =
-        `${companyId}/administratif/` +
-        `${type}-${Date.now()}.${extension}`;
-
-      const { error: uploadError } =
-        await supabase.storage
-          .from("client-documents")
-          .upload(storagePath, file, {
-            cacheControl: "3600",
-            upsert: false,
-          });
-
-      if (uploadError) {
-        throw new Error(
-          `Impossible d'envoyer le ${title} : ${uploadError.message}`
+      if (kbisFile) {
+        await uploadAdministrativeDocument(
+          kbisFile,
+          "kbis",
+          "KBIS"
         );
       }
 
-      const { error: documentError } = await supabase
-        .from("documents")
-        .insert({
-          company_id: companyId,
-          title,
-          type,
-          storage_path: storagePath,
-        });
-
-      if (documentError) {
-        // Si la ligne en base échoue, on retire le fichier
-        // pour éviter un fichier orphelin dans Storage.
-        await supabase.storage
-          .from("client-documents")
-          .remove([storagePath]);
-
-        throw new Error(
-          `Impossible d'enregistrer le ${title} : ${documentError.message}`
+      if (ribFile) {
+        await uploadAdministrativeDocument(
+          ribFile,
+          "rib",
+          "RIB"
         );
       }
-    }
 
-    /*
-     * 6 — KBIS
-     */
-    if (kbisFile) {
-      await uploadAdministrativeDocument(
-        kbisFile,
-        "kbis",
-        "KBIS"
+      console.log("CLIENT CREATED:", {
+        companyId,
+        trainingId,
+      });
+
+      router.push(`/admin/clients/${companySlug}`);
+      router.refresh();
+    } catch (err) {
+      console.error("ONBOARDING ERROR:", err);
+
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Une erreur est survenue lors de la création du client."
       );
+
+      setCreating(false);
     }
-
-    /*
-     * 7 — RIB
-     */
-    if (ribFile) {
-      await uploadAdministrativeDocument(
-        ribFile,
-        "rib",
-        "RIB"
-      );
-    }
-
-    console.log("CLIENT CREATED:", {
-      companyId: companyId,
-      trainingId,
-    });
-
-    /*
-     * 8 — Redirection vers la fiche client
-     */
-    router.push(`/admin/clients/${companySlug}`);
-    router.refresh();
-  } catch (err) {
-    console.error("ONBOARDING ERROR:", err);
-
-    setError(
-      err instanceof Error
-        ? err.message
-        : "Une erreur est survenue lors de la création du client."
-    );
-
-    setCreating(false);
   }
-}
 
   const hasTraining =
     formData.serviceType === "formation" ||
     formData.serviceType === "both";
 
   return (
-    <div className="mx-auto max-w-6xl">
+    <div className="w-full">
       <Link
         href="/admin/clients/new"
         className="mb-6 inline-flex items-center gap-2 text-sm text-muted-foreground transition hover:text-foreground"
@@ -505,8 +486,8 @@ const companySlug = company.slug;
         </p>
       </div>
 
-      <div className="mb-8 rounded-2xl border bg-white px-6 py-6">
-        <div className="flex items-start">
+      <div className="mb-8 w-full rounded-2xl border bg-white px-8 py-6">
+        <div className="grid w-full grid-cols-5 items-start">
           {steps.map((step, index) => {
             const Icon = step.icon;
             const completed = step.id < currentStep;
@@ -515,50 +496,48 @@ const companySlug = company.slug;
             return (
               <div
                 key={step.id}
-                className="flex flex-1 items-start"
+                className="relative flex flex-col items-center"
               >
-                <div className="flex min-w-[90px] flex-col items-center">
+                {index > 0 && (
                   <div
-                    className={`flex h-9 w-9 items-center justify-center rounded-full border transition ${
-                      completed || active
-                        ? "border-[#2814e8] bg-[#2814e8] text-white"
-                        : "border-[#dfe4ec] bg-white text-muted-foreground"
-                    }`}
-                  >
-                    {completed ? (
-                      <Check className="h-4 w-4" />
-                    ) : (
-                      <Icon className="h-4 w-4" />
-                    )}
-                  </div>
-
-                  <span
-                    className={`mt-2 text-xs font-medium ${
-                      active
-                        ? "text-[#2814e8]"
-                        : "text-muted-foreground"
-                    }`}
-                  >
-                    {step.name}
-                  </span>
-                </div>
-
-                {index < steps.length - 1 && (
-                  <div
-                    className={`mt-[18px] h-px flex-1 ${
-                      step.id < currentStep
+                    className={`absolute right-1/2 top-[18px] h-px w-full ${
+                      step.id <= currentStep
                         ? "bg-[#2814e8]"
                         : "bg-[#dfe4ec]"
                     }`}
                   />
                 )}
+
+                <div
+                  className={`relative z-10 flex h-9 w-9 items-center justify-center rounded-full border transition ${
+                    completed || active
+                      ? "border-[#2814e8] bg-[#2814e8] text-white"
+                      : "border-[#dfe4ec] bg-white text-muted-foreground"
+                  }`}
+                >
+                  {completed ? (
+                    <Check className="h-4 w-4" />
+                  ) : (
+                    <Icon className="h-4 w-4" />
+                  )}
+                </div>
+
+                <span
+                  className={`mt-2 text-center text-xs font-medium ${
+                    active
+                      ? "text-[#2814e8]"
+                      : "text-muted-foreground"
+                  }`}
+                >
+                  {step.name}
+                </span>
               </div>
             );
           })}
         </div>
       </div>
 
-      <div className="rounded-2xl border bg-white">
+      <div className="w-full rounded-2xl border bg-white">
         <div className="border-b px-7 py-6">
           <p className="text-sm font-medium text-[#2814e8]">
             Étape {currentStep} sur {steps.length}
@@ -615,10 +594,6 @@ const companySlug = company.slug;
           )}
 
           {currentStep === 5 && (
-            <PlaceholderStep text="Les documents de formation seront préparés ici." />
-          )}
-
-          {currentStep === 6 && (
             <ValidationStep
               formData={formData}
               participants={participants}
@@ -798,6 +773,110 @@ function AdministrativeStep({
   setKbisFile: (file: File | null) => void;
   setRibFile: (file: File | null) => void;
 }) {
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searching, setSearching] = useState(false);
+  const [searchError, setSearchError] = useState("");
+  const [companies, setCompanies] = useState<PappersCompany[]>([]);
+  const [selectedSiren, setSelectedSiren] = useState<string | null>(null);
+
+  async function searchCompany() {
+    const query = searchQuery.trim();
+
+    if (!query) {
+      setSearchError(
+        "Saisissez un nom d'entreprise, un SIREN ou un SIRET."
+      );
+      return;
+    }
+
+    setSearching(true);
+    setSearchError("");
+    setCompanies([]);
+    setSelectedSiren(null);
+
+    try {
+      const response = await fetch(
+        `/api/pappers/search?q=${encodeURIComponent(query)}`
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data?.error ??
+            "Impossible d'effectuer la recherche."
+        );
+      }
+
+      const results: PappersCompany[] =
+        data?.companies ?? [];
+
+      setCompanies(results);
+
+      if (results.length === 0) {
+        setSearchError(
+          "Aucune entreprise trouvée pour cette recherche."
+        );
+      }
+    } catch (err) {
+      console.error("PAPPERS SEARCH ERROR:", err);
+
+      setSearchError(
+        err instanceof Error
+          ? err.message
+          : "Une erreur est survenue lors de la recherche."
+      );
+    } finally {
+      setSearching(false);
+    }
+  }
+
+  function selectCompany(company: PappersCompany) {
+    setSelectedSiren(company.siren);
+
+    updateField(
+      "legalName",
+      company.legalName ?? company.name ?? ""
+    );
+
+    updateField(
+      "legalForm",
+      company.legalForm ?? ""
+    );
+
+    updateField(
+      "siren",
+      company.siren ?? ""
+    );
+
+    updateField(
+      "siret",
+      company.siret ?? ""
+    );
+
+    updateField(
+      "shareCapital",
+      company.capital !== null
+        ? String(company.capital)
+        : ""
+    );
+
+    updateField(
+      "headquartersAddress",
+      company.address ?? ""
+    );
+
+    updateField(
+      "postalCode",
+      company.postalCode ?? ""
+    );
+
+    updateField(
+      "city",
+      company.city ?? ""
+    );
+  }
+
   return (
     <div className="space-y-10">
       <div>
@@ -820,27 +899,129 @@ function AdministrativeStep({
           <div className="mt-2 flex gap-3">
             <input
               type="text"
+              value={searchQuery}
+              onChange={(event) =>
+                setSearchQuery(event.target.value)
+              }
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  event.preventDefault();
+                  void searchCompany();
+                }
+              }}
               placeholder="Ex. Decathlon ou 500569405"
               className="h-11 flex-1 rounded-xl border bg-white px-4 text-sm outline-none transition focus:border-[#9587ff] focus:ring-2 focus:ring-[#9587ff]/15"
             />
 
             <button
               type="button"
-              disabled
-              className="inline-flex h-11 items-center gap-2 rounded-xl bg-[#2814e8] px-5 text-sm font-medium text-white disabled:opacity-50"
+              onClick={() => void searchCompany()}
+              disabled={searching}
+              className="inline-flex h-11 items-center gap-2 rounded-xl bg-[#2814e8] px-5 text-sm font-medium text-white transition hover:bg-[#2110c9] disabled:cursor-not-allowed disabled:opacity-50"
             >
               <Search className="h-4 w-4" />
-              Rechercher
+
+              {searching
+                ? "Recherche..."
+                : "Rechercher"}
             </button>
           </div>
 
-          <p className="mt-2 text-xs text-muted-foreground">
-            Recherche automatique via Pappers — bientôt disponible.
+          {searchError && (
+            <p className="mt-3 text-sm text-red-600">
+              {searchError}
+            </p>
+          )}
+
+          {companies.length > 0 && (
+            <div className="mt-4 overflow-hidden rounded-xl border bg-white">
+              {companies.map((company) => {
+                const selected =
+                  company.siren === selectedSiren;
+
+                return (
+                  <button
+                    key={
+                      company.siret ??
+                      company.siren ??
+                      company.name
+                    }
+                    type="button"
+                    onClick={() =>
+                      selectCompany(company)
+                    }
+                    className={`flex w-full items-center justify-between gap-6 border-b px-4 py-4 text-left transition last:border-b-0 ${
+                      selected
+                        ? "bg-[#2814e8]/5"
+                        : "hover:bg-muted/50"
+                    }`}
+                  >
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="truncate text-sm font-semibold">
+                          {company.name ??
+                            company.legalName ??
+                            "Entreprise"}
+                        </p>
+
+                        {selected && (
+                          <span className="rounded-full bg-[#2814e8]/10 px-2 py-0.5 text-[11px] font-medium text-[#2814e8]">
+                            Sélectionnée
+                          </span>
+                        )}
+
+                        {company.status === "closed" && (
+                          <span className="rounded-full bg-red-50 px-2 py-0.5 text-[11px] font-medium text-red-600">
+                            Cessée
+                          </span>
+                        )}
+                      </div>
+
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        SIREN {company.siren ?? "—"}
+                        {company.siret
+                          ? ` · SIRET ${company.siret}`
+                          : ""}
+                      </p>
+
+                      {(company.address ||
+                        company.postalCode ||
+                        company.city) && (
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          {[
+                            company.address,
+                            company.postalCode,
+                            company.city,
+                          ]
+                            .filter(Boolean)
+                            .join(" · ")}
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="shrink-0">
+                      {selected ? (
+                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#2814e8] text-white">
+                          <Check className="h-4 w-4" />
+                        </div>
+                      ) : (
+                        <span className="text-xs font-medium text-[#2814e8]">
+                          Sélectionner
+                        </span>
+                      )}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          <p className="mt-3 text-xs text-muted-foreground">
+            Données légales récupérées automatiquement via Pappers.
           </p>
         </div>
       </div>
 
-      {/* INFORMATIONS LÉGALES */}
       <div className="border-t pt-9">
         <div className="mb-6 flex items-start justify-between gap-6">
           <div>
@@ -971,7 +1152,6 @@ function AdministrativeStep({
         </div>
       </div>
 
-      {/* INFORMATIONS BANCAIRES */}
       <div className="border-t pt-9">
         <div className="mb-6 flex items-start justify-between gap-6">
           <div>

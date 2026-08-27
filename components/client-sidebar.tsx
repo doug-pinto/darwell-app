@@ -54,9 +54,10 @@ export function ClientSidebar() {
   const searchParams = useSearchParams();
 
   const preview = searchParams.get("preview");
+
   const clientName = preview
-  ? preview.charAt(0).toUpperCase() + preview.slice(1)
-  : "Client";
+    ? preview.charAt(0).toUpperCase() + preview.slice(1)
+    : "Client";
 
   function getHref(href: string) {
     if (!preview) {
@@ -81,7 +82,7 @@ export function ClientSidebar() {
   }
 
   return (
-    <aside className="flex min-h-screen w-64 flex-col border-r bg-white px-4 py-6">
+    <aside className="sticky top-0 flex h-screen w-64 shrink-0 flex-col border-r bg-white px-4 py-6">
       {/* Logo */}
       <Link
         href={getHref("/dashboard")}
@@ -153,12 +154,12 @@ export function ClientSidebar() {
 
             <div className="min-w-0">
               <p className="truncate text-sm font-medium">
-  {clientName}
-</p>
+                {clientName}
+              </p>
 
-<p className="truncate text-xs text-muted-foreground">
-  Client
-</p>
+              <p className="truncate text-xs text-muted-foreground">
+                Client
+              </p>
             </div>
           </div>
         </div>
