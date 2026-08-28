@@ -401,24 +401,7 @@ export default async function DashboardPage({
   return (
     <div className="w-full space-y-6">
       {/* MODE APERÇU ADMINISTRATEUR */}
-      {profile.role === "admin" && preview && (
-        <div className="flex items-center justify-between gap-6 rounded-2xl border bg-white px-5 py-4">
-          <div>
-            <p className="text-sm font-semibold">
-              Mode aperçu administrateur
-            </p>
-
-            <p className="mt-1 text-sm text-muted-foreground">
-              Vous visualisez l&apos;espace client de{" "}
-              {company.name}.
-            </p>
-          </div>
-
-          <Badge variant="secondary">
-            Aperçu client
-          </Badge>
-        </div>
-      )}
+      
 
       {/* HEADER */}
       <div>
@@ -738,12 +721,27 @@ export default async function DashboardPage({
             </p>
 
             <a
-              href="mailto:dougpinto.pro@gmail.com?subject=Question concernant mon accompagnement Darwell"
-              className="mt-5 inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-[#2814e8]/30 bg-white px-5 text-sm font-medium text-[#2814e8] transition hover:bg-[#2814e8]/5"
-            >
-              <Mail className="h-4 w-4" />
-              Envoyer un email
-            </a>
+  href={`https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(
+    "dougpinto.pro@gmail.com"
+  )}&su=${encodeURIComponent(
+    `Question concernant mon accompagnement Darwell - ${company.name}`
+  )}&body=${encodeURIComponent(
+    `Bonjour Douglas,
+
+J'ai une question concernant l'accompagnement Darwell de ${company.name}.
+
+Ma question :
+
+Merci,
+`
+  )}`}
+  target="_blank"
+  rel="noopener noreferrer"
+  className="mt-5 inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-[#2814e8]/30 bg-white px-5 text-sm font-medium text-[#2814e8] transition hover:bg-[#2814e8]/5"
+>
+  <Mail className="h-4 w-4" />
+  Envoyer un email
+</a>
           </div>
         </div>
       </div>
