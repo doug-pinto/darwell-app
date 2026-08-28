@@ -11,6 +11,7 @@ import {
   Check,
   ClipboardCheck,
   Landmark,
+  Loader2,
   Plus,
   Search,
   Trash2,
@@ -635,11 +636,16 @@ export default function OnboardingPage() {
                 type="button"
                 onClick={createCompany}
                 disabled={creating}
-                className="rounded-xl bg-[#2814e8] px-5 py-2.5 text-sm font-medium text-white transition hover:bg-[#2110c9] disabled:cursor-not-allowed disabled:opacity-50"
+                className="inline-flex min-w-[150px] items-center justify-center gap-2 rounded-xl bg-[#2814e8] px-5 py-2.5 text-sm font-medium text-white transition hover:bg-[#2110c9] disabled:cursor-not-allowed disabled:opacity-70"
               >
-                {creating
-                  ? "Création..."
-                  : "Créer le client"}
+                {creating ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Création...
+                  </>
+                ) : (
+                  "Créer le client"
+                )}
               </button>
             )}
           </div>
@@ -689,21 +695,10 @@ function CompanyStep({
               updateField("serviceType", value)
             }
           >
-            <option value="">
-              Sélectionner
-            </option>
-
-            <option value="formation">
-              Formation
-            </option>
-
-            <option value="audit">
-              Audit
-            </option>
-
-            <option value="both">
-              Audit + Formation
-            </option>
+            <option value="">Sélectionner</option>
+            <option value="formation">Formation</option>
+            <option value="audit">Audit</option>
+            <option value="both">Audit + Formation</option>
           </SelectField>
         </div>
       </div>
@@ -919,7 +914,11 @@ function AdministrativeStep({
               disabled={searching}
               className="inline-flex h-11 items-center gap-2 rounded-xl bg-[#2814e8] px-5 text-sm font-medium text-white transition hover:bg-[#2110c9] disabled:cursor-not-allowed disabled:opacity-50"
             >
-              <Search className="h-4 w-4" />
+              {searching ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Search className="h-4 w-4" />
+              )}
 
               {searching
                 ? "Recherche..."

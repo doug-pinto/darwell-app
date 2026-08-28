@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { Loader2 } from "lucide-react";
 
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -15,6 +16,8 @@ export function LoginForm() {
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+
+  const isAuthenticating = loading || googleLoading;
 
   async function handleGoogleLogin() {
     setGoogleLoading(true);
@@ -39,7 +42,7 @@ export function LoginForm() {
   async function handleForgotPassword() {
     if (!email) {
       setError(
-        "Renseigne ton email avant de réinitialiser ton mot de passe."
+        "Renseignez votre email avant de réinitialiser votre mot de passe."
       );
       return;
     }
@@ -124,12 +127,20 @@ export function LoginForm() {
         type="button"
         variant="outline"
         onClick={handleGoogleLogin}
-        disabled={googleLoading}
-        className="h-[50px] w-full rounded-xl border-[#dfe4ec] bg-white text-base font-medium text-[#111827] hover:bg-[#f8fafc]"
+        disabled={isAuthenticating}
+        className="h-[50px] w-full rounded-xl border-[#dfe4ec] bg-white text-base font-medium text-[#111827] hover:bg-[#f8fafc] disabled:cursor-not-allowed disabled:opacity-60"
       >
-        <GoogleIcon />
-
-        {googleLoading ? "Connexion..." : "Continuer avec Google"}
+        {googleLoading ? (
+          <>
+            <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+            Connexion...
+          </>
+        ) : (
+          <>
+            <GoogleIcon />
+            Continuer avec Google
+          </>
+        )}
       </Button>
 
       {/* Separator */}
@@ -156,8 +167,9 @@ export function LoginForm() {
             value={email}
             onChange={(event) => setEmail(event.target.value)}
             required
+            disabled={isAuthenticating}
             autoComplete="email"
-            className="h-[50px] w-full rounded-xl border border-[#dfe4ec] bg-white px-4 text-sm outline-none transition focus:border-[#9587ff] focus:ring-2 focus:ring-[#9587ff]/15"
+            className="h-[50px] w-full rounded-xl border border-[#dfe4ec] bg-white px-4 text-sm outline-none transition focus:border-[#9587ff] focus:ring-2 focus:ring-[#9587ff]/15 disabled:cursor-not-allowed disabled:opacity-60"
             placeholder="prenom@entreprise.com"
           />
         </div>
@@ -171,7 +183,8 @@ export function LoginForm() {
             <button
               type="button"
               onClick={handleForgotPassword}
-              className="text-sm font-medium text-[#2412d8] transition hover:opacity-70"
+              disabled={isAuthenticating}
+              className="text-sm font-medium text-[#2412d8] transition hover:opacity-70 disabled:cursor-not-allowed disabled:opacity-50"
             >
               Mot de passe oublié ?
             </button>
@@ -183,29 +196,29 @@ export function LoginForm() {
             value={password}
             onChange={(event) => setPassword(event.target.value)}
             required
+            disabled={isAuthenticating}
             autoComplete="current-password"
-            className="h-[50px] w-full rounded-xl border border-[#dfe4ec] bg-white px-4 text-sm outline-none transition focus:border-[#9587ff] focus:ring-2 focus:ring-[#9587ff]/15"
+            className="h-[50px] w-full rounded-xl border border-[#dfe4ec] bg-white px-4 text-sm outline-none transition focus:border-[#9587ff] focus:ring-2 focus:ring-[#9587ff]/15 disabled:cursor-not-allowed disabled:opacity-60"
           />
         </div>
 
-        {error && (
-          <p className="text-sm text-red-600">
-            {error}
-          </p>
-        )}
+        {error && <p className="text-sm text-red-600">{error}</p>}
 
-        {message && (
-          <p className="text-sm text-green-600">
-            {message}
-          </p>
-        )}
+        {message && <p className="text-sm text-green-600">{message}</p>}
 
         <Button
           type="submit"
-          disabled={loading}
-          className="h-[54px] w-full rounded-xl bg-[#2814e8] text-base font-medium text-white hover:bg-[#2110c9]"
+          disabled={isAuthenticating}
+          className="h-[54px] w-full rounded-xl bg-[#2814e8] text-base font-medium text-white hover:bg-[#2110c9] disabled:cursor-not-allowed disabled:opacity-70"
         >
-          {loading ? "Connexion..." : "Se connecter"}
+          {loading ? (
+            <>
+              <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+              Connexion...
+            </>
+          ) : (
+            "Se connecter"
+          )}
         </Button>
       </form>
     </div>
