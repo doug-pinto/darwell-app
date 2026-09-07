@@ -4,6 +4,7 @@ import {
   ArrowLeft,
   ExternalLink,
   FileText,
+  Mail,
   Pencil,
   Plus,
   Trash2,
@@ -18,6 +19,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+
+import { sendUserAccess } from "./actions";
 
 export default async function ClientPage({
   params,
@@ -51,7 +54,7 @@ export default async function ClientPage({
   }
 
   const companyId = company.id;
-const companySlug = company.slug;
+  const companySlug = company.slug;
 
   /*
    * INFORMATIONS DU CONTACT
@@ -66,7 +69,7 @@ const companySlug = company.slug;
       contact_last_name,
       contact_email
     `)
-    .eq("company_id", company.id)
+    .eq("company_id", companyId)
     .maybeSingle();
 
   if (companyDetailsError) {
@@ -86,7 +89,7 @@ const companySlug = company.slug;
     .select(
       "id, date, start_time, end_time, location, postal_code, city, status, price_ht, price_ttc, description"
     )
-    .eq("company_id", company.id)
+    .eq("company_id", companyId)
     .order("date", { ascending: false });
 
   if (trainingError) {
@@ -134,7 +137,7 @@ const companySlug = company.slug;
       .select(
         "id, title, status, summary, next_step"
       )
-      .eq("company_id", company.id)
+      .eq("company_id", companyId)
       .maybeSingle();
 
   if (auditError) {
@@ -325,8 +328,8 @@ const companySlug = company.slug;
      * 3 — RAFRAÎCHISSEMENT
      */
     revalidatePath(
-  `/admin/clients/${companySlug}`
-);
+      `/admin/clients/${companySlug}`
+    );
 
     revalidatePath("/audit");
   }
@@ -340,7 +343,7 @@ const companySlug = company.slug;
   } = await supabase
     .from("profiles")
     .select("id, email, full_name, role")
-    .eq("company_id", company.id)
+    .eq("company_id", companyId)
     .order("email");
 
   if (usersError) {
@@ -360,7 +363,7 @@ const companySlug = company.slug;
     .select(
       "id, title, type, storage_path, created_at"
     )
-    .eq("company_id", company.id)
+    .eq("company_id", companyId)
     .order("created_at", {
       ascending: false,
     });
@@ -422,7 +425,7 @@ const companySlug = company.slug;
         </h1>
 
         <Link
-          href={`/admin/clients/${company.slug}/preview`}
+          href={`/admin/clients/${companySlug}/preview`}
           className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-[#2814e8] px-4 text-sm font-medium text-white transition-colors hover:bg-[#2110c9]"
         >
           <ExternalLink className="h-4 w-4" />
@@ -438,7 +441,7 @@ const companySlug = company.slug;
           </h2>
 
           <Link
-            href={`/admin/clients/${company.slug}/edit`}
+            href={`/admin/clients/${companySlug}/edit`}
             className="inline-flex h-9 items-center justify-center gap-2 rounded-lg border bg-background px-4 text-sm font-medium transition-colors hover:bg-muted"
           >
             <Pencil className="h-4 w-4" />
@@ -516,7 +519,7 @@ const companySlug = company.slug;
 
                 {audit ? (
                   <Link
-                    href={`/admin/clients/${company.slug}/audit/transcripts/new`}
+                    href={`/admin/clients/${companySlug}/audit/transcripts/new`}
                     className="inline-flex h-9 items-center justify-center gap-2 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
                   >
                     <Plus className="h-4 w-4" />
@@ -524,7 +527,7 @@ const companySlug = company.slug;
                   </Link>
                 ) : (
                   <Link
-                    href={`/admin/clients/${company.slug}/audit/new`}
+                    href={`/admin/clients/${companySlug}/audit/new`}
                     className="inline-flex h-9 items-center justify-center gap-2 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
                   >
                     <Plus className="h-4 w-4" />
@@ -646,7 +649,7 @@ const companySlug = company.slug;
 
               {trainingSession ? (
                 <Link
-                  href={`/admin/clients/${company.slug}/formations/${trainingSession.id}/edit`}
+                  href={`/admin/clients/${companySlug}/formations/${trainingSession.id}/edit`}
                   className="inline-flex h-9 items-center justify-center gap-2 rounded-lg border bg-background px-4 text-sm font-medium transition-colors hover:bg-muted"
                 >
                   <Pencil className="h-4 w-4" />
@@ -654,7 +657,7 @@ const companySlug = company.slug;
                 </Link>
               ) : (
                 <Link
-                  href={`/admin/clients/${company.slug}/formations/new`}
+                  href={`/admin/clients/${companySlug}/formations/new`}
                   className="inline-flex h-9 items-center justify-center gap-2 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
                 >
                   <Plus className="h-4 w-4" />
@@ -791,7 +794,7 @@ const companySlug = company.slug;
         {/* DOCUMENTS */}
         <Card className="rounded-2xl">
           <DocumentsCard
-            companyId={company.id}
+            companyId={companyId}
             documents={documentsWithUrls}
           />
         </Card>
@@ -805,7 +808,7 @@ const companySlug = company.slug;
               </CardTitle>
 
               <Link
-                href={`/admin/clients/${company.slug}/users/new`}
+                href={`/admin/clients/${companySlug}/users/new`}
                 className="inline-flex h-9 items-center justify-center gap-2 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
               >
                 <Plus className="h-4 w-4" />
@@ -821,22 +824,60 @@ const companySlug = company.slug;
                 {companyUsers.map((user) => (
                   <div
                     key={user.id}
-                    className="rounded-xl border p-3"
+                    className="rounded-xl border p-4"
                   >
-                    <p className="font-medium">
-                      {user.full_name ||
-                        user.email}
-                    </p>
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="min-w-0">
+                        <p className="font-medium">
+                          {user.full_name ||
+                            user.email}
+                        </p>
 
-                    <p className="text-sm text-muted-foreground">
-                      {user.email}
-                    </p>
+                        <p className="mt-1 truncate text-sm text-muted-foreground">
+                          {user.email}
+                        </p>
 
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      {user.role === "admin"
-                        ? "Administrateur"
-                        : "Client"}
-                    </p>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          {user.role === "admin"
+                            ? "Administrateur"
+                            : "Client"}
+                        </p>
+                      </div>
+
+                      {user.email &&
+                        user.role ===
+                          "client" && (
+                          <form
+                            action={
+                              sendUserAccess
+                            }
+                          >
+                            <input
+                              type="hidden"
+                              name="email"
+                              value={
+                                user.email
+                              }
+                            />
+
+                            <input
+                              type="hidden"
+                              name="company_id"
+                              value={
+                                companyId
+                              }
+                            />
+
+                            <button
+  type="submit"
+  className="inline-flex h-9 shrink-0 items-center justify-center gap-2 rounded-lg border bg-background px-3 text-sm font-medium transition-colors hover:bg-muted"
+>
+  <Mail className="h-4 w-4" />
+Envoyer l&apos;accès
+</button>
+                          </form>
+                        )}
+                    </div>
                   </div>
                 ))}
               </div>
