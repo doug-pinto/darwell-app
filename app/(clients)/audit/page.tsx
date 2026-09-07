@@ -1,10 +1,12 @@
 import { redirect } from "next/navigation";
 import {
+  ExternalLink,
+  FileText,
+  ListChecks,
   Mail,
   ShieldCheck,
   Target,
   TrendingUp,
-  ListChecks,
 } from "lucide-react";
 
 import { createClient } from "@/lib/supabase/server";
@@ -53,7 +55,7 @@ export default async function AuditPage({
    * 3 — ENTREPRISE
    *
    * Admin :
-   * /audit?preview=ariane
+   * /audit?preview=mea
    *
    * Client :
    * company_id du profil
@@ -113,7 +115,7 @@ export default async function AuditPage({
     await supabase
       .from("audits")
       .select(
-        "id, title, status, global_score, summary, next_step"
+        "id, title, status, summary, next_step"
       )
       .eq("company_id", company.id)
       .maybeSingle();
@@ -133,16 +135,15 @@ export default async function AuditPage({
   } = audit
     ? await supabase
         .from("audit_transcripts")
-        .select(
-          `
+        .select(`
           id,
           interviewee_name,
           interviewee_role,
           interview_date,
-          transcript,
-          created_at
-          `
-        )
+          created_at,
+          file_path,
+          file_name
+        `)
         .eq("audit_id", audit.id)
         .order("interview_date", {
           ascending: false,
@@ -159,7 +160,46 @@ export default async function AuditPage({
   }
 
   /*
-   * 7 — VRAI ESPACE AUDIT
+   * 7 — URLS SIGNÉES DES TRANSCRIPTS
+   *
+   * Les fichiers sont stockés dans un bucket privé.
+   * On génère donc une URL temporaire valable 10 minutes.
+   */
+  const transcriptsWithUrls = await Promise.all(
+    (transcripts ?? []).map(async (transcript) => {
+      if (!transcript.file_path) {
+        return {
+          ...transcript,
+          signedUrl: null,
+        };
+      }
+
+      const { data, error } =
+        await supabase.storage
+          .from("audit-transcripts")
+          .createSignedUrl(
+            transcript.file_path,
+            60 * 10
+          );
+
+      if (error) {
+        console.error(
+          `Impossible de générer l'URL du transcript ${transcript.id} :`,
+          error.message
+        );
+      }
+
+      return {
+        ...transcript,
+        signedUrl: error
+          ? null
+          : data.signedUrl,
+      };
+    })
+  );
+
+  /*
+   * 8 — VRAI ESPACE AUDIT
    */
   return (
     <div className="mx-auto max-w-6xl space-y-6">
@@ -181,7 +221,7 @@ export default async function AuditPage({
 
       {/* SYNTHÈSE */}
       {audit && (
-        <div className="grid gap-4 md:grid-cols-3">
+        <div className="grid gap-4 md:grid-cols-2">
           <AuditStatCard
             label="Statut"
             value={formatAuditStatus(audit.status)}
@@ -189,17 +229,7 @@ export default async function AuditPage({
 
           <AuditStatCard
             label="Entretiens réalisés"
-            value={`${transcripts?.length ?? 0}`}
-          />
-
-          <AuditStatCard
-            label="Score IA"
-            value={
-              audit.global_score !== null &&
-              audit.global_score !== undefined
-                ? `${audit.global_score}/100`
-                : "—"
-            }
+            value={`${transcriptsWithUrls.length}`}
           />
         </div>
       )}
@@ -245,45 +275,73 @@ export default async function AuditPage({
         </CardHeader>
 
         <CardContent className="pt-6">
-          {transcripts && transcripts.length > 0 ? (
+          {transcriptsWithUrls.length > 0 ? (
             <div className="space-y-3">
-              {transcripts.map((transcript) => (
-                <div
-                  key={transcript.id}
-                  className="rounded-xl border p-5"
-                >
-                  <div className="flex items-start justify-between gap-6">
-                    <div>
-                      <p className="font-semibold">
-                        {transcript.interviewee_name}
-                      </p>
+              {transcriptsWithUrls.map(
+                (transcript) => (
+                  <div
+                    key={transcript.id}
+                    className="rounded-xl border p-5"
+                  >
+                    <div className="flex items-start justify-between gap-6">
+                      <div className="min-w-0 flex-1">
+                        <p className="font-semibold">
+                          {
+                            transcript.interviewee_name
+                          }
+                        </p>
 
-                      <p className="mt-1 text-sm text-muted-foreground">
-                        {transcript.interviewee_role ||
-                          "Fonction non renseignée"}
-                      </p>
-                    </div>
+                        <p className="mt-1 text-sm text-muted-foreground">
+                          {transcript.interviewee_role ||
+                            "Fonction non renseignée"}
+                        </p>
 
-                    {transcript.interview_date && (
-                      <p className="shrink-0 text-sm text-muted-foreground">
-                        {formatDate(
-                          transcript.interview_date
+                        {transcript.file_name && (
+                          <div className="mt-4 flex items-center gap-2 text-sm text-muted-foreground">
+                            <FileText className="h-4 w-4 shrink-0" />
+
+                            <span className="truncate">
+                              {
+                                transcript.file_name
+                              }
+                            </span>
+                          </div>
                         )}
-                      </p>
-                    )}
-                  </div>
 
-                  <details className="mt-5 border-t pt-4">
-                    <summary className="cursor-pointer text-sm font-medium">
-                      Consulter le transcript
-                    </summary>
+                        {transcript.signedUrl ? (
+                          <a
+                            href={
+                              transcript.signedUrl
+                            }
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="mt-3 inline-flex items-center gap-1.5 text-sm font-medium text-[#2814e8] transition hover:underline"
+                          >
+                            Ouvrir le transcript
+                            <ExternalLink className="h-3.5 w-3.5" />
+                          </a>
+                        ) : transcript.file_path ? (
+                          <p className="mt-3 text-xs text-muted-foreground">
+                            Le fichier est momentanément indisponible.
+                          </p>
+                        ) : (
+                          <p className="mt-3 text-xs text-muted-foreground">
+                            Aucun fichier associé à cet entretien.
+                          </p>
+                        )}
+                      </div>
 
-                    <div className="mt-4 whitespace-pre-wrap text-sm leading-7 text-muted-foreground">
-                      {transcript.transcript}
+                      {transcript.interview_date && (
+                        <p className="shrink-0 text-sm text-muted-foreground">
+                          {formatDate(
+                            transcript.interview_date
+                          )}
+                        </p>
+                      )}
                     </div>
-                  </details>
-                </div>
-              ))}
+                  </div>
+                )
+              )}
             </div>
           ) : (
             <div className="py-10 text-center">
@@ -304,7 +362,7 @@ export default async function AuditPage({
 }
 
 /* -------------------------------------------------------------------------- */
-/*                         PRÉSENTATION AUDIT                                 */
+/*                         PRÉSENTATION AUDIT                                  */
 /* -------------------------------------------------------------------------- */
 
 function AuditPresentation({
@@ -360,7 +418,9 @@ Merci.`;
 
   const gmailUrl =
     `https://mail.google.com/mail/?view=cm&fs=1` +
-    `&to=${encodeURIComponent("dougpinto.pro@gmail.com")}` +
+    `&to=${encodeURIComponent(
+      "dougpinto.pro@gmail.com"
+    )}` +
     `&su=${encodeURIComponent(gmailSubject)}` +
     `&body=${encodeURIComponent(gmailBody)}`;
 

@@ -1,9 +1,12 @@
 import Link from "next/link";
+import { revalidatePath } from "next/cache";
 import {
   ArrowLeft,
   ExternalLink,
+  FileText,
   Pencil,
   Plus,
+  Trash2,
 } from "lucide-react";
 
 import { createClient } from "@/lib/supabase/server";
@@ -47,6 +50,9 @@ export default async function ClientPage({
     );
   }
 
+  const companyId = company.id;
+const companySlug = company.slug;
+
   /*
    * INFORMATIONS DU CONTACT
    */
@@ -78,7 +84,7 @@ export default async function ClientPage({
   } = await supabase
     .from("training_sessions")
     .select(
-      "id, date, start_time, end_time, location, status, price_ht, price_ttc, description"
+      "id, date, start_time, end_time, location, postal_code, city, status, price_ht, price_ttc, description"
     )
     .eq("company_id", company.id)
     .order("date", { ascending: false });
@@ -126,7 +132,7 @@ export default async function ClientPage({
     await supabase
       .from("audits")
       .select(
-        "id, title, status, global_score, summary, next_step"
+        "id, title, status, summary, next_step"
       )
       .eq("company_id", company.id)
       .maybeSingle();
@@ -147,7 +153,7 @@ export default async function ClientPage({
     ? await supabase
         .from("audit_transcripts")
         .select(
-          "id, interviewee_name, interviewee_role, interview_date, transcript, created_at"
+          "id, interviewee_name, interviewee_role, interview_date, created_at, file_path, file_name"
         )
         .eq("audit_id", audit.id)
         .order("interview_date", {
@@ -159,6 +165,170 @@ export default async function ClientPage({
     throw new Error(
       `Impossible de récupérer les transcripts : ${transcriptsError.message}`
     );
+  }
+
+  /*
+   * URLS SIGNÉES DES TRANSCRIPTS
+   */
+  const transcriptsWithUrls = await Promise.all(
+    (transcripts ?? []).map(async (transcript) => {
+      if (!transcript.file_path) {
+        return {
+          ...transcript,
+          signedUrl: null,
+        };
+      }
+
+      const { data, error } =
+        await supabase.storage
+          .from("audit-transcripts")
+          .createSignedUrl(
+            transcript.file_path,
+            60 * 10
+          );
+
+      return {
+        ...transcript,
+        signedUrl: error
+          ? null
+          : data.signedUrl,
+      };
+    })
+  );
+
+  /*
+   * SUPPRIMER UN TRANSCRIPT
+   */
+  async function deleteTranscript(
+    formData: FormData
+  ) {
+    "use server";
+
+    const supabase = await createClient();
+
+    /*
+     * Vérification utilisateur
+     */
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+
+    if (userError || !user) {
+      throw new Error(
+        "Utilisateur non authentifié."
+      );
+    }
+
+    /*
+     * Vérification admin
+     */
+    const {
+      data: profile,
+      error: profileError,
+    } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", user.id)
+      .single();
+
+    if (
+      profileError ||
+      !profile ||
+      profile.role !== "admin"
+    ) {
+      throw new Error(
+        "Vous n'êtes pas autorisé à supprimer ce transcript."
+      );
+    }
+
+    /*
+     * Identifiant du transcript
+     */
+    const transcriptId = formData
+      .get("transcript_id")
+      ?.toString();
+
+    if (!transcriptId) {
+      throw new Error(
+        "Identifiant du transcript manquant."
+      );
+    }
+
+    /*
+     * Récupération du transcript
+     */
+    const {
+      data: transcriptToDelete,
+      error: transcriptError,
+    } = await supabase
+      .from("audit_transcripts")
+      .select("id, audit_id, file_path")
+      .eq("id", transcriptId)
+      .single();
+
+    if (
+      transcriptError ||
+      !transcriptToDelete
+    ) {
+      throw new Error(
+        "Transcript introuvable."
+      );
+    }
+
+    /*
+     * Vérification de l'audit
+     */
+    if (
+      !audit ||
+      transcriptToDelete.audit_id !== audit.id
+    ) {
+      throw new Error(
+        "Ce transcript n'appartient pas à cet audit."
+      );
+    }
+
+    /*
+     * 1 — SUPPRESSION DU FICHIER STORAGE
+     */
+    if (transcriptToDelete.file_path) {
+      const { error: storageError } =
+        await supabase.storage
+          .from("audit-transcripts")
+          .remove([
+            transcriptToDelete.file_path,
+          ]);
+
+      if (storageError) {
+        throw new Error(
+          `Impossible de supprimer le fichier : ${storageError.message}`
+        );
+      }
+    }
+
+    /*
+     * 2 — SUPPRESSION DE LA BASE
+     */
+    const { error: deleteError } =
+      await supabase
+        .from("audit_transcripts")
+        .delete()
+        .eq("id", transcriptId);
+
+    if (deleteError) {
+      throw new Error(
+        `Impossible de supprimer le transcript : ${deleteError.message}`
+      );
+    }
+
+    /*
+     * 3 — RAFRAÎCHISSEMENT
+     */
+    revalidatePath(
+  `/admin/clients/${companySlug}`
+);
+
+    revalidatePath("/audit");
   }
 
   /*
@@ -288,9 +458,7 @@ export default async function ClientPage({
             </p>
 
             <div className="mt-2">
-              <ServiceBadge
-                type={company.type}
-              />
+              <ServiceBadge type={company.type} />
             </div>
           </div>
 
@@ -300,9 +468,7 @@ export default async function ClientPage({
             </p>
 
             <div className="mt-2 flex items-center gap-2">
-              <StatusDot
-                status={company.status}
-              />
+              <StatusDot status={company.status} />
 
               <span className="text-sm font-medium">
                 {formatCompanyStatus(
@@ -338,7 +504,6 @@ export default async function ClientPage({
 
       {/* CONTENU CLIENT */}
       <div className="grid gap-6 md:grid-cols-2">
-
         {/* AUDIT */}
         {(company.type === "audit" ||
           company.type === "both") && (
@@ -374,17 +539,17 @@ export default async function ClientPage({
                 <p className="text-sm text-muted-foreground">
                   Aucun audit renseigné.
                 </p>
-              ) : transcripts &&
-                transcripts.length > 0 ? (
+              ) : transcriptsWithUrls.length >
+                0 ? (
                 <div className="space-y-3">
-                  {transcripts.map(
+                  {transcriptsWithUrls.map(
                     (transcript) => (
                       <div
                         key={transcript.id}
                         className="rounded-xl border p-4"
                       >
                         <div className="flex items-start justify-between gap-4">
-                          <div>
+                          <div className="min-w-0 flex-1">
                             <p className="font-medium">
                               {
                                 transcript.interviewee_name
@@ -395,15 +560,66 @@ export default async function ClientPage({
                               {transcript.interviewee_role ||
                                 "Fonction non renseignée"}
                             </p>
+
+                            {transcript.file_name && (
+                              <div className="mt-3 flex items-center gap-2 text-sm text-muted-foreground">
+                                <FileText className="h-4 w-4 shrink-0" />
+
+                                <span className="truncate">
+                                  {
+                                    transcript.file_name
+                                  }
+                                </span>
+                              </div>
+                            )}
+
+                            {transcript.signedUrl && (
+                              <a
+                                href={
+                                  transcript.signedUrl
+                                }
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="mt-3 inline-flex items-center gap-1.5 text-sm font-medium text-[#2814e8] transition hover:underline"
+                              >
+                                Ouvrir le transcript
+                                <ExternalLink className="h-3.5 w-3.5" />
+                              </a>
+                            )}
                           </div>
 
-                          {transcript.interview_date && (
-                            <p className="text-sm text-muted-foreground">
-                              {formatDate(
-                                transcript.interview_date
-                              )}
-                            </p>
-                          )}
+                          <div className="flex shrink-0 items-start gap-3">
+                            {transcript.interview_date && (
+                              <p className="pt-1 text-sm text-muted-foreground">
+                                {formatDate(
+                                  transcript.interview_date
+                                )}
+                              </p>
+                            )}
+
+                            <form
+                              action={
+                                deleteTranscript
+                              }
+                            >
+                              <input
+                                type="hidden"
+                                name="transcript_id"
+                                value={
+                                  transcript.id
+                                }
+                              />
+
+                              <button
+                                type="submit"
+                                title="Supprimer le transcript"
+                                aria-label="Supprimer le transcript"
+                                className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition hover:bg-red-50 hover:text-red-600"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                            </form>
+                          </div>
                         </div>
                       </div>
                     )
@@ -420,7 +636,7 @@ export default async function ClientPage({
           </Card>
         )}
 
-        {/* FORMATION — TOUJOURS DISPONIBLE */}
+        {/* FORMATION */}
         <Card className="rounded-2xl">
           <CardHeader className="border-b pb-5">
             <div className="flex items-center justify-between">
@@ -491,9 +707,13 @@ export default async function ClientPage({
 
                   <InfoItem
                     label="Lieu"
-                    value={
-                      trainingSession.location
-                    }
+                    value={[
+                      trainingSession.location,
+                      trainingSession.postal_code,
+                      trainingSession.city,
+                    ]
+                      .filter(Boolean)
+                      .join(" ")}
                   />
 
                   <InfoItem
@@ -532,9 +752,7 @@ export default async function ClientPage({
                       {trainingParticipants.map(
                         (participant) => (
                           <div
-                            key={
-                              participant.id
-                            }
+                            key={participant.id}
                             className="rounded-xl border p-3"
                           >
                             <p className="text-sm font-medium">
@@ -547,9 +765,7 @@ export default async function ClientPage({
                             </p>
 
                             <p className="mt-1 text-sm text-muted-foreground">
-                              {
-                                participant.email
-                              }
+                              {participant.email}
                             </p>
                           </div>
                         )
