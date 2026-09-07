@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, FileUp } from "lucide-react";
 
 import { createClient } from "@/lib/supabase/server";
 import { Button } from "@/components/ui/button";
@@ -50,6 +50,7 @@ export default async function NewTranscriptPage({
   }
 
   const companySlug = company.slug;
+  const companyId = company.id;
   const auditId = audit.id;
 
   async function createTranscript(formData: FormData) {
@@ -71,30 +72,106 @@ export default async function NewTranscriptPage({
       .get("interview_date")
       ?.toString();
 
-    const transcript = formData
-      .get("transcript")
-      ?.toString()
-      .trim();
+    const file = formData.get("transcript_file");
 
-    if (!intervieweeName || !transcript) {
+    if (!intervieweeName) {
       throw new Error(
-        "Le nom de la personne et le transcript sont obligatoires."
+        "Le nom de la personne interviewée est obligatoire."
       );
     }
 
-    const { error } = await supabase
+    if (!(file instanceof File) || file.size === 0) {
+      throw new Error(
+        "Vous devez ajouter un fichier de transcript."
+      );
+    }
+
+    const allowedMimeTypes = [
+      "application/pdf",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    ];
+
+    const allowedExtensions = [".pdf", ".docx"];
+
+    const fileNameLower = file.name.toLowerCase();
+
+    const hasAllowedExtension =
+      allowedExtensions.some((extension) =>
+        fileNameLower.endsWith(extension)
+      );
+
+    if (
+      !allowedMimeTypes.includes(file.type) &&
+      !hasAllowedExtension
+    ) {
+      throw new Error(
+        "Seuls les fichiers PDF et DOCX sont autorisés."
+      );
+    }
+
+    const maxFileSize = 10 * 1024 * 1024;
+
+    if (file.size > maxFileSize) {
+      throw new Error(
+        "Le fichier ne doit pas dépasser 10 Mo."
+      );
+    }
+
+    const sanitizedFileName = file.name
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-zA-Z0-9._-]/g, "-")
+      .replace(/-+/g, "-");
+
+    const storagePath = [
+      companyId,
+      auditId,
+      `${Date.now()}-${sanitizedFileName}`,
+    ].join("/");
+
+    /*
+     * 1 — UPLOAD DANS SUPABASE STORAGE
+     */
+    const { error: uploadError } = await supabase.storage
+      .from("audit-transcripts")
+      .upload(storagePath, file, {
+        contentType: file.type || undefined,
+        upsert: false,
+      });
+
+    if (uploadError) {
+      throw new Error(
+        `Impossible d'importer le transcript : ${uploadError.message}`
+      );
+    }
+
+    /*
+     * 2 — ENREGISTREMENT EN BASE
+     */
+    const { error: insertError } = await supabase
       .from("audit_transcripts")
       .insert({
         audit_id: auditId,
         interviewee_name: intervieweeName,
         interviewee_role: intervieweeRole || null,
         interview_date: interviewDate || null,
-        transcript,
+        transcript: null,
+        file_path: storagePath,
+        file_name: file.name,
       });
 
-    if (error) {
+    if (insertError) {
+      /*
+       * Si l'enregistrement DB échoue,
+       * on supprime le fichier uploadé pour éviter
+       * un fichier orphelin dans Storage.
+       */
+      await supabase.storage
+        .from("audit-transcripts")
+        .remove([storagePath]);
+
       throw new Error(
-        `Impossible d'ajouter le transcript : ${error.message}`
+        `Impossible d'ajouter le transcript : ${insertError.message}`
       );
     }
 
@@ -129,7 +206,10 @@ export default async function NewTranscriptPage({
         </CardHeader>
 
         <CardContent className="pt-6">
-          <form action={createTranscript} className="space-y-6">
+          <form
+            action={createTranscript}
+            className="space-y-6"
+          >
             <div className="grid gap-6 sm:grid-cols-2">
               <div className="space-y-2">
                 <label
@@ -183,20 +263,41 @@ export default async function NewTranscriptPage({
 
             <div className="space-y-2">
               <label
-                htmlFor="transcript"
+                htmlFor="transcript_file"
                 className="text-sm font-medium"
               >
                 Transcript
               </label>
 
-              <textarea
-                id="transcript"
-                name="transcript"
-                required
-                rows={14}
-                placeholder="Collez ici le transcript complet de l'entretien..."
-                className="w-full resize-y rounded-lg border bg-background px-3 py-2 text-sm leading-6"
-              />
+              <label
+                htmlFor="transcript_file"
+                className="flex cursor-pointer flex-col items-center justify-center rounded-2xl border border-dashed bg-muted/20 px-6 py-12 text-center transition hover:bg-muted/40"
+              >
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#2814e8]/10 text-[#2814e8]">
+                  <FileUp className="h-6 w-6" />
+                </div>
+
+                <p className="mt-4 text-sm font-medium">
+                  Importer le transcript de l'entretien
+                </p>
+
+                <p className="mt-1 text-xs text-muted-foreground">
+                  PDF ou DOCX · 10 Mo maximum
+                </p>
+
+                <span className="mt-5 inline-flex h-10 items-center justify-center rounded-lg border bg-white px-4 text-sm font-medium">
+                  Choisir un fichier
+                </span>
+
+                <input
+                  id="transcript_file"
+                  name="transcript_file"
+                  type="file"
+                  required
+                  accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                  className="sr-only"
+                />
+              </label>
             </div>
 
             <div className="flex justify-end gap-3 border-t pt-6">

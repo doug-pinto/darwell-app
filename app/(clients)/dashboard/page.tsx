@@ -8,7 +8,6 @@ import {
   GraduationCap,
   Mail,
   MessageSquareText,
-  Target,
   UserRound,
   Users,
 } from "lucide-react";
@@ -48,11 +47,11 @@ export default async function DashboardPage({
    * 2 — PROFIL
    */
   const { data: profile, error: profileError } =
-    await supabase
-      .from("profiles")
-      .select("role, company_id")
-      .eq("id", user.id)
-      .single();
+  await supabase
+    .from("profiles")
+    .select("role, company_id, full_name")
+    .eq("id", user.id)
+    .single();
 
   if (profileError || !profile) {
     throw new Error("Profil utilisateur introuvable.");
@@ -175,9 +174,9 @@ export default async function DashboardPage({
   const { data: audit, error: auditError } =
     await supabase
       .from("audits")
-      .select(
-        "id, title, status, global_score, summary, next_step"
-      )
+.select(
+  "id, title, status, summary, next_step"
+)
       .eq("company_id", company.id)
       .maybeSingle();
 
@@ -398,6 +397,58 @@ export default async function DashboardPage({
     .filter(Boolean)
     .join(" ");
 
+    /*
+ * 15 — NOM À AFFICHER DANS LE MESSAGE DE BIENVENUE
+ */
+
+const getFirstName = (
+  fullName: string | null | undefined
+) => {
+  if (!fullName) {
+    return null;
+  }
+
+  const firstName = fullName
+    .trim()
+    .split(/\s+/)[0];
+
+  return firstName || null;
+};
+
+const userFirstName = getFirstName(
+  profile.full_name
+);
+
+const contactFirstName =
+  companyDetails?.contact_first_name?.trim() ||
+  null;
+
+let greetingName = company.name;
+
+/*
+ * Si un vrai client est connecté,
+ * son prénom est toujours prioritaire.
+ */
+if (profile.role === "client") {
+  greetingName =
+    userFirstName ||
+    contactFirstName ||
+    company.name;
+}
+
+/*
+ * En mode aperçu administrateur,
+ * on affiche le contact principal.
+ */
+if (
+  profile.role === "admin" &&
+  preview
+) {
+  greetingName =
+    contactFirstName ||
+    company.name;
+}
+
   return (
     <div className="w-full space-y-6">
       {/* MODE APERÇU ADMINISTRATEUR */}
@@ -410,8 +461,8 @@ export default async function DashboardPage({
         </p>
 
         <h1 className="mt-2 text-3xl font-semibold tracking-tight">
-          Bonjour {company.name}
-        </h1>
+  Bonjour {greetingName}
+</h1>
 
         <p className="mt-2 text-muted-foreground">
           Retrouvez ici l&apos;avancement de votre
@@ -420,7 +471,13 @@ export default async function DashboardPage({
       </div>
 
       {/* KPI */}
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <div
+  className={`grid gap-4 md:grid-cols-2 ${
+    hasTraining
+      ? "xl:grid-cols-4"
+      : "xl:grid-cols-3"
+  }`}
+>
         <DashboardStatCard
           label="Statut de l'accompagnement"
           icon={
@@ -491,42 +548,22 @@ export default async function DashboardPage({
           </DashboardStatCard>
         )}
 
-        {hasTraining ? (
-          <DashboardStatCard
-            label="Participants accompagnés"
-            icon={
-              <Users className="h-5 w-5" />
-            }
-          >
-            <p className="mt-3 text-2xl font-semibold">
-              {totalParticipants}
-            </p>
+        {hasTraining && (
+  <DashboardStatCard
+    label="Participants accompagnés"
+    icon={
+      <Users className="h-5 w-5" />
+    }
+  >
+    <p className="mt-3 text-2xl font-semibold">
+      {totalParticipants}
+    </p>
 
-            <p className="mt-2 text-xs text-muted-foreground">
-              Collaborateurs inscrits
-            </p>
-          </DashboardStatCard>
-        ) : (
-          <DashboardStatCard
-            label="Score IA"
-            icon={
-              <Target className="h-5 w-5" />
-            }
-          >
-            <p className="mt-3 text-2xl font-semibold">
-              {audit?.global_score !==
-                null &&
-              audit?.global_score !==
-                undefined
-                ? `${audit.global_score}/100`
-                : "—"}
-            </p>
-
-            <p className="mt-2 text-xs text-muted-foreground">
-              Score global de maturité
-            </p>
-          </DashboardStatCard>
-        )}
+    <p className="mt-2 text-xs text-muted-foreground">
+      Collaborateurs inscrits
+    </p>
+  </DashboardStatCard>
+)}
       </div>
 
       {/* ACCOMPAGNEMENT + RÉSUMÉ */}

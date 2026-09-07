@@ -14,6 +14,7 @@ import {
   Map,
   GraduationCap,
   FileText,
+  KeyRound,
   Settings,
   LogOut,
 } from "lucide-react";
@@ -40,6 +41,11 @@ const navigation = [
     name: "Roadmap",
     href: "/roadmap",
     icon: Map,
+  },
+  {
+    name: "Licences IA",
+    href: "/licences",
+    icon: KeyRound,
   },
   {
     name: "Documents",
@@ -102,7 +108,6 @@ export function ClientSidebar() {
       <nav className="mt-8 space-y-1">
         {navigation.map((item) => {
           const Icon = item.icon;
-
           const isActive = pathname === item.href;
 
           return (
