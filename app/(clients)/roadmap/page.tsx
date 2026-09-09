@@ -85,7 +85,29 @@ export default async function RoadmapPage({
   }
 
   /*
-   * 4 — GMAIL PRÉREMPLI
+   * 4 — AUDIT
+   *
+   * Utilisé pour alimenter la page Roadmap
+   * des clients Audit.
+   */
+  const { data: audit, error: auditError } =
+    await supabase
+      .from("audits")
+      .select("id, status, next_step")
+      .eq("company_id", company.id)
+      .maybeSingle();
+
+  if (auditError) {
+    throw new Error(
+      `Impossible de récupérer l'audit : ${auditError.message}`
+    );
+  }
+
+  /*
+   * 5 — GMAIL PRÉREMPLI
+   *
+   * Utilisé uniquement pour la version destinée
+   * aux clients Formation.
    */
   const gmailSubject =
     "Échange concernant une Roadmap IA Darwell";
@@ -109,23 +131,123 @@ Merci.`;
     `&body=${encodeURIComponent(gmailBody)}`;
 
   /*
-   * Pour l'instant, nous construisons uniquement
-   * la version destinée aux clients Formation.
+   * 6 — CLIENT AUDIT
+   *
+   * La roadmap définitive n'est pas encore renseignée.
+   * On affiche donc une page d'attente structurée.
    */
   if (company.type !== "formation") {
     return (
-      <div className="mx-auto max-w-6xl">
-        <h1 className="text-3xl font-semibold tracking-tight">
-          Roadmap IA
-        </h1>
+      <div className="mx-auto max-w-6xl space-y-6">
+        {/* HEADER */}
+        <div>
+          <p className="text-sm font-medium text-[#2814e8]">
+            Roadmap IA
+          </p>
 
-        <p className="mt-2 text-muted-foreground">
-          Votre roadmap sera bientôt disponible dans cet espace.
-        </p>
+          <h1 className="mt-2 text-3xl font-semibold tracking-tight">
+            Votre feuille de route IA
+          </h1>
+
+          <p className="mt-2 max-w-2xl text-muted-foreground">
+            La roadmap de {company.name} est actuellement en
+            préparation. Elle traduira les conclusions de votre
+            audit en initiatives prioritaires et directement
+            actionnables.
+          </p>
+        </div>
+
+        {/* CONSTRUCTION DE LA ROADMAP */}
+        <div className="rounded-2xl border bg-white p-6">
+          <div>
+            <h2 className="text-lg font-semibold">
+              Construction de votre roadmap
+            </h2>
+
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">
+              Nous transformons les enseignements de votre audit
+              en un plan d&apos;action structuré et priorisé.
+            </p>
+          </div>
+
+          <div className="mt-7">
+            <RoadmapProgressItem
+              status="completed"
+              title="Audit et entretiens"
+              description="Collecte des informations et compréhension de votre organisation."
+            />
+
+            <RoadmapProgressItem
+              status="active"
+              title="Analyse et priorisation"
+              description="Identification et classement des opportunités IA les plus pertinentes."
+            />
+
+            <RoadmapProgressItem
+              status="pending"
+              title="Construction du plan d'action"
+              description="Organisation des initiatives, priorités et prochaines actions."
+            />
+
+            <RoadmapProgressItem
+              status="pending"
+              title="Restitution"
+              description="Présentation de la roadmap et des recommandations."
+              last
+            />
+          </div>
+
+          {audit?.next_step && (
+            <div className="mt-6 rounded-xl bg-[#2814e8]/[0.04] p-4">
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Prochaine étape
+              </p>
+
+              <p className="mt-2 text-sm font-semibold">
+                {audit.next_step}
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* CONTENU À VENIR */}
+        <div className="rounded-2xl border bg-white p-6">
+          <h2 className="text-lg font-semibold">
+            Ce que vous retrouverez dans votre roadmap
+          </h2>
+
+          <p className="mt-2 text-sm text-muted-foreground">
+            Chaque initiative sera évaluée afin de vous aider à
+            décider quoi lancer et dans quel ordre.
+          </p>
+
+          <div className="mt-6 grid gap-4 md:grid-cols-3">
+            <RoadmapPreviewCard
+              title="Priorités IA"
+              description="Les initiatives les plus pertinentes pour votre organisation."
+            />
+
+            <RoadmapPreviewCard
+              title="Impact"
+              description="Le niveau de valeur et les gains potentiels de chaque initiative."
+            />
+
+            <RoadmapPreviewCard
+              title="Effort"
+              description="La complexité et les ressources nécessaires pour passer à l'action."
+            />
+          </div>
+        </div>
       </div>
     );
   }
 
+  /*
+   * 7 — CLIENT FORMATION
+   *
+   * On conserve ta page actuelle de présentation commerciale
+   * de la Roadmap IA.
+   */
   return (
     <div className="mx-auto max-w-6xl space-y-6">
       {/* HEADER */}
@@ -305,6 +427,106 @@ Merci.`;
           Le message sera prérempli dans Gmail.
         </p>
       </div>
+    </div>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/*                        PROGRESSION ROADMAP                                  */
+/* -------------------------------------------------------------------------- */
+
+function RoadmapProgressItem({
+  status,
+  title,
+  description,
+  last = false,
+}: {
+  status: "completed" | "active" | "pending";
+  title: string;
+  description: string;
+  last?: boolean;
+}) {
+  return (
+    <div className="flex gap-4">
+      <div className="flex flex-col items-center">
+        <div
+          className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${
+            status === "completed"
+              ? "bg-[#2814e8] text-white"
+              : status === "active"
+                ? "border border-[#2814e8] bg-[#2814e8]/[0.06] text-[#2814e8]"
+                : "border bg-white text-muted-foreground"
+          }`}
+        >
+          {status === "completed"
+            ? "✓"
+            : status === "active"
+              ? "●"
+              : ""}
+        </div>
+
+        {!last && (
+          <div className="my-1 h-full min-h-8 w-px bg-border" />
+        )}
+      </div>
+
+      <div
+        className={`flex-1 ${
+          last ? "pb-0" : "pb-6"
+        }`}
+      >
+        <div className="flex items-center justify-between gap-4">
+          <p className="text-sm font-semibold">
+            {title}
+          </p>
+
+          {status === "completed" && (
+            <span className="text-xs text-muted-foreground">
+              Terminé
+            </span>
+          )}
+
+          {status === "active" && (
+            <span className="text-xs font-medium text-[#2814e8]">
+              En cours
+            </span>
+          )}
+
+          {status === "pending" && (
+            <span className="text-xs text-muted-foreground">
+              À venir
+            </span>
+          )}
+        </div>
+
+        <p className="mt-1 text-sm leading-6 text-muted-foreground">
+          {description}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/*                         PREVIEW ROADMAP                                     */
+/* -------------------------------------------------------------------------- */
+
+function RoadmapPreviewCard({
+  title,
+  description,
+}: {
+  title: string;
+  description: string;
+}) {
+  return (
+    <div className="rounded-xl border p-5">
+      <p className="text-sm font-semibold">
+        {title}
+      </p>
+
+      <p className="mt-2 text-sm leading-6 text-muted-foreground">
+        {description}
+      </p>
     </div>
   );
 }

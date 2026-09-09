@@ -9,11 +9,13 @@ import { Button } from "@/components/ui/button";
 
 type DocumentUploadProps = {
   companyId: string;
+  category?: string | null;
   onSuccess?: () => void;
 };
 
 export function DocumentUpload({
   companyId,
+  category = null,
   onSuccess,
 }: DocumentUploadProps) {
   const router = useRouter();
@@ -44,19 +46,20 @@ export function DocumentUpload({
 
     const filePath = `${companyId}/${crypto.randomUUID()}-${file.name}`;
 
-    // 1. Upload dans Supabase Storage.
+    // 1 — Upload du fichier dans Supabase Storage.
     const { error: uploadError } = await supabase.storage
       .from("client-documents")
       .upload(filePath, file);
 
     if (uploadError) {
-      setError(`Erreur pendant l'upload : ${uploadError.message}`);
+      setError(
+        `Erreur pendant l'upload : ${uploadError.message}`
+      );
       setLoading(false);
       return;
     }
 
-    // 2. Création du document en base.
-    // Le nom du fichier devient automatiquement le titre.
+    // 2 — Création du document en base.
     const { error: documentError } = await supabase
       .from("documents")
       .insert({
@@ -64,9 +67,12 @@ export function DocumentUpload({
         title: file.name,
         type: file.type || "file",
         storage_path: filePath,
+        category,
       });
 
     if (documentError) {
+      // Si l'insertion échoue, on supprime le fichier
+      // déjà envoyé pour éviter les fichiers orphelins.
       await supabase.storage
         .from("client-documents")
         .remove([filePath]);
@@ -115,7 +121,9 @@ export function DocumentUpload({
             event.preventDefault();
             setDragging(false);
 
-            selectFile(event.dataTransfer.files?.[0] ?? null);
+            selectFile(
+              event.dataTransfer.files?.[0] ?? null
+            );
           }}
           onClick={() => inputRef.current?.click()}
           className={`flex min-h-56 cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed p-8 text-center transition-colors ${
@@ -189,7 +197,9 @@ export function DocumentUpload({
           onClick={handleUpload}
           disabled={!file || loading}
         >
-          {loading ? "Import en cours..." : "Importer"}
+          {loading
+            ? "Import en cours..."
+            : "Importer"}
         </Button>
       </div>
     </div>
