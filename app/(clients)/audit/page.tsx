@@ -102,9 +102,7 @@ export default async function AuditPage({
    */
   if (company.type === "formation") {
     return (
-      <AuditPresentation
-        companyName={company.name}
-      />
+      <AuditPresentation companyName={company.name} />
     );
   }
 
@@ -127,7 +125,62 @@ export default async function AuditPage({
   }
 
   /*
-   * 6 — TRANSCRIPTS
+   * 6 — RAPPORT D'AUDIT PRINCIPAL
+   *
+   * Le rapport est stocké dans la table documents
+   * avec category = "audit_report".
+   */
+  const {
+    data: auditReport,
+    error: auditReportError,
+  } = await supabase
+    .from("documents")
+    .select(
+      "id, title, type, storage_path, created_at"
+    )
+    .eq("company_id", company.id)
+    .eq("category", "audit_report")
+    .order("created_at", {
+      ascending: false,
+    })
+    .limit(1)
+    .maybeSingle();
+
+  if (auditReportError) {
+    throw new Error(
+      `Impossible de récupérer le rapport d'audit : ${auditReportError.message}`
+    );
+  }
+
+  /*
+   * 7 — URL SIGNÉE DU RAPPORT
+   *
+   * Les documents clients sont stockés
+   * dans le bucket privé client-documents.
+   */
+  let auditReportSignedUrl: string | null = null;
+
+  if (auditReport?.storage_path) {
+    const { data, error } =
+      await supabase.storage
+        .from("client-documents")
+        .createSignedUrl(
+          auditReport.storage_path,
+          60 * 10
+        );
+
+    if (error) {
+      console.error(
+        "Impossible de générer l'URL du rapport d'audit :",
+        error.message
+      );
+    } else {
+      auditReportSignedUrl = data.signedUrl;
+    }
+  }
+
+  /*
+   * 8 — TRANSCRIPTS
    */
   const {
     data: transcripts,
@@ -160,7 +213,7 @@ export default async function AuditPage({
   }
 
   /*
-   * 7 — URLS SIGNÉES DES TRANSCRIPTS
+   * 9 — URLS SIGNÉES DES TRANSCRIPTS
    *
    * Les fichiers sont stockés dans un bucket privé.
    * On génère donc une URL temporaire valable 10 minutes.
@@ -199,7 +252,7 @@ export default async function AuditPage({
   );
 
   /*
-   * 8 — VRAI ESPACE AUDIT
+   * 10 — VRAI ESPACE AUDIT
    */
   return (
     <div className="mx-auto max-w-6xl space-y-6">
@@ -256,6 +309,80 @@ export default async function AuditPage({
               </p>
             </div>
           )}
+
+          {/* RAPPORT D'AUDIT */}
+          <div className="mt-6">
+            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              Rapport d&apos;audit
+            </p>
+
+            {auditReport ? (
+              <div className="mt-3 rounded-xl border bg-white p-4">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex min-w-0 items-start gap-3">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#2814e8]/[0.07] text-[#2814e8]">
+                      <FileText className="h-5 w-5" />
+                    </div>
+
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold">
+                        {auditReport.title}
+                      </p>
+
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        Rapport complet de votre audit IA
+                      </p>
+
+                      {auditReport.created_at && (
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          Ajouté le{" "}
+                          {formatDateTime(
+                            auditReport.created_at
+                          )}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  {auditReportSignedUrl ? (
+                    <a
+                      href={auditReportSignedUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-xl border px-4 text-sm font-medium transition hover:bg-muted"
+                    >
+                      Ouvrir le rapport
+                      <ExternalLink className="h-4 w-4" />
+                    </a>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">
+                      Document momentanément indisponible.
+                    </p>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className="mt-3 rounded-xl border border-dashed bg-muted/20 p-4">
+                <div className="flex items-start gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground">
+                    <FileText className="h-5 w-5" />
+                  </div>
+
+                  <div>
+                    <p className="text-sm font-medium">
+                      Rapport en préparation
+                    </p>
+
+                    <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                      Votre rapport d&apos;audit sera
+                      disponible ici à l&apos;issue de
+                      l&apos;analyse.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       )}
 
@@ -453,35 +580,27 @@ Merci.`;
 
         <div className="mt-6 grid gap-0 md:grid-cols-2 xl:grid-cols-4">
           <AuditBenefit
-            icon={
-              <Target className="h-5 w-5" />
-            }
+            icon={<Target className="h-5 w-5" />}
             title="Cas d’usage prioritaires"
             description="Identifier les processus et métiers où l’IA peut créer le plus de valeur."
           />
 
           <AuditBenefit
-            icon={
-              <TrendingUp className="h-5 w-5" />
-            }
+            icon={<TrendingUp className="h-5 w-5" />}
             title="Gains potentiels"
             description="Évaluer les impacts en termes de temps, productivité ou qualité."
             bordered
           />
 
           <AuditBenefit
-            icon={
-              <ShieldCheck className="h-5 w-5" />
-            }
+            icon={<ShieldCheck className="h-5 w-5" />}
             title="Risques et prérequis"
             description="Identifier les contraintes liées aux données, aux outils et à la sécurité."
             bordered
           />
 
           <AuditBenefit
-            icon={
-              <ListChecks className="h-5 w-5" />
-            }
+            icon={<ListChecks className="h-5 w-5" />}
             title="Priorités"
             description="Déterminer les sujets à traiter en priorité pour passer à l’action."
             bordered
@@ -673,4 +792,12 @@ function formatDate(value: string) {
   }).format(
     new Date(`${value}T00:00:00Z`)
   );
+}
+
+function formatDateTime(value: string) {
+  return new Intl.DateTimeFormat("fr-FR", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  }).format(new Date(value));
 }

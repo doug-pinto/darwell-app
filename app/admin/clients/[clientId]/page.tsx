@@ -12,6 +12,7 @@ import {
 
 import { createClient } from "@/lib/supabase/server";
 import { DocumentsCard } from "@/components/documents-card";
+import { AuditReportUpload } from "@/components/audit-report-upload";
 import { Badge } from "@/components/ui/badge";
 import {
   Card,
@@ -209,9 +210,6 @@ export default async function ClientPage({
 
     const supabase = await createClient();
 
-    /*
-     * Vérification utilisateur
-     */
     const {
       data: { user },
       error: userError,
@@ -223,9 +221,6 @@ export default async function ClientPage({
       );
     }
 
-    /*
-     * Vérification admin
-     */
     const {
       data: profile,
       error: profileError,
@@ -245,9 +240,6 @@ export default async function ClientPage({
       );
     }
 
-    /*
-     * Identifiant du transcript
-     */
     const transcriptId = formData
       .get("transcript_id")
       ?.toString();
@@ -258,9 +250,6 @@ export default async function ClientPage({
       );
     }
 
-    /*
-     * Récupération du transcript
-     */
     const {
       data: transcriptToDelete,
       error: transcriptError,
@@ -279,9 +268,6 @@ export default async function ClientPage({
       );
     }
 
-    /*
-     * Vérification de l'audit
-     */
     if (
       !audit ||
       transcriptToDelete.audit_id !== audit.id
@@ -291,9 +277,6 @@ export default async function ClientPage({
       );
     }
 
-    /*
-     * 1 — SUPPRESSION DU FICHIER STORAGE
-     */
     if (transcriptToDelete.file_path) {
       const { error: storageError } =
         await supabase.storage
@@ -309,9 +292,6 @@ export default async function ClientPage({
       }
     }
 
-    /*
-     * 2 — SUPPRESSION DE LA BASE
-     */
     const { error: deleteError } =
       await supabase
         .from("audit_transcripts")
@@ -324,9 +304,6 @@ export default async function ClientPage({
       );
     }
 
-    /*
-     * 3 — RAFRAÎCHISSEMENT
-     */
     revalidatePath(
       `/admin/clients/${companySlug}`
     );
@@ -361,7 +338,7 @@ export default async function ClientPage({
   } = await supabase
     .from("documents")
     .select(
-      "id, title, type, storage_path, created_at"
+      "id, title, type, category, storage_path, created_at"
     )
     .eq("company_id", companyId)
     .order("created_at", {
@@ -399,6 +376,31 @@ export default async function ClientPage({
       };
     })
   );
+
+  /*
+   * RAPPORT D'AUDIT
+   *
+   * Le premier document correspond au plus récent
+   * puisque les documents sont triés par created_at DESC.
+   */
+  const auditReport =
+    documentsWithUrls.find(
+      (document) =>
+        document.category === "audit_report"
+    ) ?? null;
+
+  /*
+   * DOCUMENTS CLASSIQUES
+   *
+   * Le rapport principal est affiché dans la card Audit IA
+   * et ne doit donc pas apparaître une seconde fois
+   * dans la card Documents.
+   */
+  const regularDocuments =
+    documentsWithUrls.filter(
+      (document) =>
+        document.category !== "audit_report"
+    );
 
   const contactName = [
     companyDetails?.contact_first_name,
@@ -512,19 +514,34 @@ export default async function ClientPage({
           company.type === "both") && (
           <Card className="rounded-2xl">
             <CardHeader className="border-b pb-5">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between gap-4">
                 <CardTitle className="text-base">
                   Audit IA
                 </CardTitle>
 
                 {audit ? (
-                  <Link
-                    href={`/admin/clients/${companySlug}/audit/transcripts/new`}
-                    className="inline-flex h-9 items-center justify-center gap-2 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
-                  >
-                    <Plus className="h-4 w-4" />
-                    Ajouter un transcript
-                  </Link>
+                  <div className="flex items-center gap-2">
+                    <AuditReportUpload
+                      companyId={companyId}
+                      existingReport={
+                        auditReport
+                          ? {
+                              id: auditReport.id,
+                              storage_path:
+                                auditReport.storage_path,
+                            }
+                          : null
+                      }
+                    />
+
+                    <Link
+                      href={`/admin/clients/${companySlug}/audit/transcripts/new`}
+                      className="inline-flex h-9 shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+                    >
+                      <Plus className="h-4 w-4" />
+                      Ajouter un transcript
+                    </Link>
+                  </div>
                 ) : (
                   <Link
                     href={`/admin/clients/${companySlug}/audit/new`}
@@ -542,97 +559,161 @@ export default async function ClientPage({
                 <p className="text-sm text-muted-foreground">
                   Aucun audit renseigné.
                 </p>
-              ) : transcriptsWithUrls.length >
-                0 ? (
-                <div className="space-y-3">
-                  {transcriptsWithUrls.map(
-                    (transcript) => (
-                      <div
-                        key={transcript.id}
-                        className="rounded-xl border p-4"
-                      >
-                        <div className="flex items-start justify-between gap-4">
-                          <div className="min-w-0 flex-1">
-                            <p className="font-medium">
-                              {
-                                transcript.interviewee_name
-                              }
-                            </p>
+              ) : (
+                <div className="space-y-6">
+                  {/* RAPPORT D'AUDIT */}
+                  <div>
+                    <p className="mb-3 text-sm font-medium">
+                      Rapport d&apos;audit
+                    </p>
 
-                            <p className="mt-1 text-sm text-muted-foreground">
-                              {transcript.interviewee_role ||
-                                "Fonction non renseignée"}
-                            </p>
+                    {auditReport ? (
+                      <div className="rounded-xl border bg-[#2814e8]/[0.025] p-4">
+                        <div className="flex items-center justify-between gap-4">
+                          <div className="flex min-w-0 items-center gap-3">
+                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#2814e8]/[0.07] text-[#2814e8]">
+                              <FileText className="h-5 w-5" />
+                            </div>
 
-                            {transcript.file_name && (
-                              <div className="mt-3 flex items-center gap-2 text-sm text-muted-foreground">
-                                <FileText className="h-4 w-4 shrink-0" />
-
-                                <span className="truncate">
-                                  {
-                                    transcript.file_name
-                                  }
-                                </span>
-                              </div>
-                            )}
-
-                            {transcript.signedUrl && (
-                              <a
-                                href={
-                                  transcript.signedUrl
-                                }
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="mt-3 inline-flex items-center gap-1.5 text-sm font-medium text-[#2814e8] transition hover:underline"
-                              >
-                                Ouvrir le transcript
-                                <ExternalLink className="h-3.5 w-3.5" />
-                              </a>
-                            )}
-                          </div>
-
-                          <div className="flex shrink-0 items-start gap-3">
-                            {transcript.interview_date && (
-                              <p className="pt-1 text-sm text-muted-foreground">
-                                {formatDate(
-                                  transcript.interview_date
-                                )}
+                            <div className="min-w-0">
+                              <p className="truncate text-sm font-medium">
+                                {auditReport.title}
                               </p>
-                            )}
 
-                            <form
-                              action={
-                                deleteTranscript
-                              }
-                            >
-                              <input
-                                type="hidden"
-                                name="transcript_id"
-                                value={
-                                  transcript.id
-                                }
-                              />
-
-                              <button
-                                type="submit"
-                                title="Supprimer le transcript"
-                                aria-label="Supprimer le transcript"
-                                className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition hover:bg-red-50 hover:text-red-600"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </button>
-                            </form>
+                              <p className="mt-1 text-xs text-muted-foreground">
+                                Rapport principal de l&apos;audit
+                              </p>
+                            </div>
                           </div>
+
+                          {auditReport.signedUrl && (
+                            <a
+                              href={
+                                auditReport.signedUrl
+                              }
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex shrink-0 items-center gap-1.5 text-sm font-medium text-[#2814e8] transition hover:underline"
+                            >
+                              Ouvrir
+                              <ExternalLink className="h-3.5 w-3.5" />
+                            </a>
+                          )}
                         </div>
                       </div>
-                    )
-                  )}
-                </div>
-              ) : (
-                <div className="py-6">
-                  <p className="text-sm text-muted-foreground">
-                    Aucun transcript ajouté pour cet audit.
-                  </p>
+                    ) : (
+                      <div className="rounded-xl border border-dashed p-4">
+                        <p className="text-sm text-muted-foreground">
+                          Aucun rapport d&apos;audit ajouté pour
+                          le moment.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* ENTRETIENS */}
+                  <div className="border-t pt-5">
+                    <p className="mb-3 text-sm font-medium">
+                      Entretiens
+                    </p>
+
+                    {transcriptsWithUrls.length >
+                    0 ? (
+                      <div className="space-y-3">
+                        {transcriptsWithUrls.map(
+                          (transcript) => (
+                            <div
+                              key={
+                                transcript.id
+                              }
+                              className="rounded-xl border p-4"
+                            >
+                              <div className="flex items-start justify-between gap-4">
+                                <div className="min-w-0 flex-1">
+                                  <p className="font-medium">
+                                    {
+                                      transcript.interviewee_name
+                                    }
+                                  </p>
+
+                                  <p className="mt-1 text-sm text-muted-foreground">
+                                    {transcript.interviewee_role ||
+                                      "Fonction non renseignée"}
+                                  </p>
+
+                                  {transcript.file_name && (
+                                    <div className="mt-3 flex items-center gap-2 text-sm text-muted-foreground">
+                                      <FileText className="h-4 w-4 shrink-0" />
+
+                                      <span className="truncate">
+                                        {
+                                          transcript.file_name
+                                        }
+                                      </span>
+                                    </div>
+                                  )}
+
+                                  {transcript.signedUrl && (
+                                    <a
+                                      href={
+                                        transcript.signedUrl
+                                      }
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="mt-3 inline-flex items-center gap-1.5 text-sm font-medium text-[#2814e8] transition hover:underline"
+                                    >
+                                      Ouvrir le transcript
+                                      <ExternalLink className="h-3.5 w-3.5" />
+                                    </a>
+                                  )}
+                                </div>
+
+                                <div className="flex shrink-0 items-start gap-3">
+                                  {transcript.interview_date && (
+                                    <p className="pt-1 text-sm text-muted-foreground">
+                                      {formatDate(
+                                        transcript.interview_date
+                                      )}
+                                    </p>
+                                  )}
+
+                                  <form
+                                    action={
+                                      deleteTranscript
+                                    }
+                                  >
+                                    <input
+                                      type="hidden"
+                                      name="transcript_id"
+                                      value={
+                                        transcript.id
+                                      }
+                                    />
+
+                                    <button
+                                      type="submit"
+                                      title="Supprimer le transcript"
+                                      aria-label="Supprimer le transcript"
+                                      className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition hover:bg-red-50 hover:text-red-600"
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </button>
+                                  </form>
+                                </div>
+                              </div>
+                            </div>
+                          )
+                        )}
+                      </div>
+                    ) : (
+                      <div className="py-2">
+                        <p className="text-sm text-muted-foreground">
+                          Aucun transcript ajouté pour
+                          cet audit.
+                        </p>
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
             </CardContent>
@@ -795,7 +876,7 @@ export default async function ClientPage({
         <Card className="rounded-2xl">
           <DocumentsCard
             companyId={companyId}
-            documents={documentsWithUrls}
+            documents={regularDocuments}
           />
         </Card>
 
@@ -869,12 +950,12 @@ export default async function ClientPage({
                             />
 
                             <button
-  type="submit"
-  className="inline-flex h-9 shrink-0 items-center justify-center gap-2 rounded-lg border bg-background px-3 text-sm font-medium transition-colors hover:bg-muted"
->
-  <Mail className="h-4 w-4" />
-Envoyer l&apos;accès
-</button>
+                              type="submit"
+                              className="inline-flex h-9 shrink-0 items-center justify-center gap-2 rounded-lg border bg-background px-3 text-sm font-medium transition-colors hover:bg-muted"
+                            >
+                              <Mail className="h-4 w-4" />
+                              Envoyer l&apos;accès
+                            </button>
                           </form>
                         )}
                     </div>
