@@ -111,9 +111,7 @@ export default async function ClientPage({
   } = trainingSession
     ? await supabase
         .from("training_participants")
-        .select(
-          "id, first_name, last_name, email"
-        )
+        .select("id, first_name, last_name, email")
         .eq(
           "training_session_id",
           trainingSession.id
@@ -379,9 +377,6 @@ export default async function ClientPage({
 
   /*
    * RAPPORT D'AUDIT
-   *
-   * Le premier document correspond au plus récent
-   * puisque les documents sont triés par created_at DESC.
    */
   const auditReport =
     documentsWithUrls.find(
@@ -391,10 +386,6 @@ export default async function ClientPage({
 
   /*
    * DOCUMENTS CLASSIQUES
-   *
-   * Le rapport principal est affiché dans la card Audit IA
-   * et ne doit donc pas apparaître une seconde fois
-   * dans la card Documents.
    */
   const regularDocuments =
     documentsWithUrls.filter(
@@ -520,7 +511,17 @@ export default async function ClientPage({
                 </CardTitle>
 
                 {audit ? (
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center justify-end gap-2">
+                    {/* MODIFIER */}
+                    <Link
+                      href={`/admin/clients/${companySlug}/audit/edit`}
+                      className="inline-flex h-9 shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-lg border bg-background px-3 text-sm font-medium transition-colors hover:bg-muted"
+                    >
+                      <Pencil className="h-4 w-4" />
+                      Modifier
+                    </Link>
+
+                    {/* RAPPORT */}
                     <AuditReportUpload
                       companyId={companyId}
                       existingReport={
@@ -534,6 +535,7 @@ export default async function ClientPage({
                       }
                     />
 
+                    {/* TRANSCRIPT */}
                     <Link
                       href={`/admin/clients/${companySlug}/audit/transcripts/new`}
                       className="inline-flex h-9 shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"

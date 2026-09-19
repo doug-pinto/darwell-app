@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import {
+  CheckCircle2,
   ExternalLink,
   FileText,
   ListChecks,
@@ -96,9 +97,6 @@ export default async function AuditPage({
 
   /*
    * 4 — CLIENT FORMATION UNIQUEMENT
-   *
-   * Il n'a pas encore acheté d'audit.
-   * On lui présente donc l'offre.
    */
   if (company.type === "formation") {
     return (
@@ -108,6 +106,9 @@ export default async function AuditPage({
 
   /*
    * 5 — AUDIT DU CLIENT
+   *
+   * audits.status devient la source de vérité
+   * pour le statut de l'audit.
    */
   const { data: audit, error: auditError } =
     await supabase
@@ -125,10 +126,24 @@ export default async function AuditPage({
   }
 
   /*
-   * 6 — RAPPORT D'AUDIT PRINCIPAL
+   * On accepte temporairement les deux formats :
    *
-   * Le rapport est stocké dans la table documents
-   * avec category = "audit_report".
+   * Nouveau :
+   * "En cours"
+   * "Terminé"
+   *
+   * Ancien :
+   * "active"
+   * "completed"
+   *
+   * Cela évite de casser d'anciennes données.
+   */
+  const auditIsCompleted =
+    audit?.status === "Terminé" ||
+    audit?.status === "completed";
+
+  /*
+   * 6 — RAPPORT D'AUDIT PRINCIPAL
    */
   const {
     data: auditReport,
@@ -154,9 +169,6 @@ export default async function AuditPage({
 
   /*
    * 7 — URL SIGNÉE DU RAPPORT
-   *
-   * Les documents clients sont stockés
-   * dans le bucket privé client-documents.
    */
   let auditReportSignedUrl: string | null = null;
 
@@ -214,9 +226,6 @@ export default async function AuditPage({
 
   /*
    * 9 — URLS SIGNÉES DES TRANSCRIPTS
-   *
-   * Les fichiers sont stockés dans un bucket privé.
-   * On génère donc une URL temporaire valable 10 minutes.
    */
   const transcriptsWithUrls = await Promise.all(
     (transcripts ?? []).map(async (transcript) => {
@@ -252,7 +261,7 @@ export default async function AuditPage({
   );
 
   /*
-   * 10 — VRAI ESPACE AUDIT
+   * 10 — ESPACE AUDIT
    */
   return (
     <div className="mx-auto max-w-6xl space-y-6">
@@ -267,8 +276,9 @@ export default async function AuditPage({
         </h1>
 
         <p className="mt-2 text-muted-foreground">
-          Suivez les entretiens et l&apos;avancement de
-          l&apos;audit de {company.name}.
+          {auditIsCompleted
+            ? `Retrouvez les résultats et les livrables de l'audit IA de ${company.name}.`
+            : `Suivez les entretiens et l'avancement de l'audit de ${company.name}.`}
         </p>
       </div>
 
@@ -278,6 +288,7 @@ export default async function AuditPage({
           <AuditStatCard
             label="Statut"
             value={formatAuditStatus(audit.status)}
+            completed={auditIsCompleted}
           />
 
           <AuditStatCard
@@ -298,16 +309,37 @@ export default async function AuditPage({
             {audit.summary}
           </p>
 
-          {audit.next_step && (
-            <div className="mt-6 rounded-xl bg-[#2814e8]/[0.04] p-4">
-              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                Prochaine étape
-              </p>
+          {/* ÉTAT TERMINÉ */}
+          {auditIsCompleted ? (
+            <div className="mt-6 rounded-xl border border-emerald-200 bg-emerald-50/60 p-4">
+              <div className="flex items-start gap-3">
+                <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600" />
 
-              <p className="mt-2 text-sm font-semibold">
-                {audit.next_step}
-              </p>
+                <div>
+                  <p className="text-sm font-semibold">
+                    Audit terminé
+                  </p>
+
+                  <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                    L&apos;audit IA de {company.name} est
+                    terminé. Vous pouvez retrouver ci-dessous
+                    les éléments et livrables associés.
+                  </p>
+                </div>
+              </div>
             </div>
+          ) : (
+            audit.next_step && (
+              <div className="mt-6 rounded-xl bg-[#2814e8]/[0.04] p-4">
+                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Prochaine étape
+                </p>
+
+                <p className="mt-2 text-sm font-semibold">
+                  {audit.next_step}
+                </p>
+              </div>
+            )
           )}
 
           {/* RAPPORT D'AUDIT */}
@@ -370,13 +402,15 @@ export default async function AuditPage({
 
                   <div>
                     <p className="text-sm font-medium">
-                      Rapport en préparation
+                      {auditIsCompleted
+                        ? "Rapport non disponible"
+                        : "Rapport en préparation"}
                     </p>
 
                     <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                      Votre rapport d&apos;audit sera
-                      disponible ici à l&apos;issue de
-                      l&apos;analyse.
+                      {auditIsCompleted
+                        ? "Aucun rapport d'audit n'est disponible pour le moment."
+                        : "Votre rapport d'audit sera disponible ici à l'issue de l'analyse."}
                     </p>
                   </div>
                 </div>
@@ -744,9 +778,11 @@ function AuditBenefit({
 function AuditStatCard({
   label,
   value,
+  completed = false,
 }: {
   label: string;
   value: string;
+  completed?: boolean;
 }) {
   return (
     <div className="rounded-2xl border bg-white p-5">
@@ -754,9 +790,15 @@ function AuditStatCard({
         {label}
       </p>
 
-      <p className="mt-3 text-2xl font-semibold">
-        {value}
-      </p>
+      <div className="mt-3 flex items-center gap-2">
+        {completed && (
+          <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+        )}
+
+        <p className="text-2xl font-semibold">
+          {value}
+        </p>
+      </div>
     </div>
   );
 }
@@ -768,6 +810,24 @@ function AuditStatCard({
 function formatAuditStatus(
   status: string | null
 ) {
+  /*
+   * Nouveau format utilisé par l'admin.
+   */
+  if (status === "Terminé") {
+    return "Terminé";
+  }
+
+  if (status === "En cours") {
+    return "En cours";
+  }
+
+  if (status === "À venir") {
+    return "À venir";
+  }
+
+  /*
+   * Compatibilité avec les anciennes valeurs.
+   */
   if (status === "completed") {
     return "Terminé";
   }

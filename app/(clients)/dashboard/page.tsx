@@ -47,11 +47,11 @@ export default async function DashboardPage({
    * 2 — PROFIL
    */
   const { data: profile, error: profileError } =
-  await supabase
-    .from("profiles")
-    .select("role, company_id, full_name")
-    .eq("id", user.id)
-    .single();
+    await supabase
+      .from("profiles")
+      .select("role, company_id, full_name")
+      .eq("id", user.id)
+      .single();
 
   if (profileError || !profile) {
     throw new Error("Profil utilisateur introuvable.");
@@ -174,9 +174,9 @@ export default async function DashboardPage({
   const { data: audit, error: auditError } =
     await supabase
       .from("audits")
-.select(
-  "id, title, status, summary, next_step"
-)
+      .select(
+        "id, title, status, summary, next_step"
+      )
       .eq("company_id", company.id)
       .maybeSingle();
 
@@ -185,6 +185,19 @@ export default async function DashboardPage({
       `Impossible de récupérer l'audit : ${auditError.message}`
     );
   }
+
+  /*
+   * SOURCE DE VÉRITÉ DE L'AUDIT
+   *
+   * Nouveau format :
+   * En cours / Terminé
+   *
+   * Ancien format conservé temporairement :
+   * active / completed
+   */
+  const auditIsCompleted =
+    audit?.status === "Terminé" ||
+    audit?.status === "completed";
 
   /*
    * 8 — TRANSCRIPTS
@@ -284,7 +297,21 @@ export default async function DashboardPage({
     transcripts?.length ?? 0;
 
   /*
-   * 12 — PROCHAINE ÉTAPE
+   * 12 — STATUT GLOBAL AFFICHÉ
+   *
+   * Pour un client Audit :
+   * audits.status est prioritaire.
+   */
+  let accompanimentStatus =
+    formatCompanyStatus(company.status);
+
+  if (hasAudit && audit) {
+    accompanimentStatus =
+      formatAuditStatus(audit.status);
+  }
+
+  /*
+   * 13 — PROCHAINE ÉTAPE
    */
   let nextStepTitle =
     "Accompagnement en cours";
@@ -292,7 +319,18 @@ export default async function DashboardPage({
   let nextStepDescription =
     "Votre équipe Darwell poursuit votre accompagnement.";
 
-  if (hasAudit && audit?.next_step) {
+  if (
+    hasAudit &&
+    auditIsCompleted
+  ) {
+    nextStepTitle = "Audit terminé";
+
+    nextStepDescription =
+      "Votre audit IA est terminé.";
+  } else if (
+    hasAudit &&
+    audit?.next_step
+  ) {
     nextStepTitle = audit.next_step;
 
     nextStepDescription =
@@ -322,7 +360,7 @@ export default async function DashboardPage({
   }
 
   /*
-   * 13 — ACTIVITÉS RÉCENTES
+   * 14 — ACTIVITÉS RÉCENTES
    */
   const activities: Activity[] = [];
 
@@ -388,7 +426,7 @@ export default async function DashboardPage({
     .slice(0, 4);
 
   /*
-   * 14 — CONTACT CLIENT
+   * 15 — CONTACT CLIENT
    */
   const contactName = [
     companyDetails?.contact_first_name,
@@ -397,63 +435,51 @@ export default async function DashboardPage({
     .filter(Boolean)
     .join(" ");
 
-    /*
- * 15 — NOM À AFFICHER DANS LE MESSAGE DE BIENVENUE
- */
+  /*
+   * 16 — NOM À AFFICHER
+   */
+  const getFirstName = (
+    fullName: string | null | undefined
+  ) => {
+    if (!fullName) {
+      return null;
+    }
 
-const getFirstName = (
-  fullName: string | null | undefined
-) => {
-  if (!fullName) {
-    return null;
+    const firstName = fullName
+      .trim()
+      .split(/\s+/)[0];
+
+    return firstName || null;
+  };
+
+  const userFirstName = getFirstName(
+    profile.full_name
+  );
+
+  const contactFirstName =
+    companyDetails?.contact_first_name?.trim() ||
+    null;
+
+  let greetingName = company.name;
+
+  if (profile.role === "client") {
+    greetingName =
+      userFirstName ||
+      contactFirstName ||
+      company.name;
   }
 
-  const firstName = fullName
-    .trim()
-    .split(/\s+/)[0];
-
-  return firstName || null;
-};
-
-const userFirstName = getFirstName(
-  profile.full_name
-);
-
-const contactFirstName =
-  companyDetails?.contact_first_name?.trim() ||
-  null;
-
-let greetingName = company.name;
-
-/*
- * Si un vrai client est connecté,
- * son prénom est toujours prioritaire.
- */
-if (profile.role === "client") {
-  greetingName =
-    userFirstName ||
-    contactFirstName ||
-    company.name;
-}
-
-/*
- * En mode aperçu administrateur,
- * on affiche le contact principal.
- */
-if (
-  profile.role === "admin" &&
-  preview
-) {
-  greetingName =
-    contactFirstName ||
-    company.name;
-}
+  if (
+    profile.role === "admin" &&
+    preview
+  ) {
+    greetingName =
+      contactFirstName ||
+      company.name;
+  }
 
   return (
     <div className="w-full space-y-6">
-      {/* MODE APERÇU ADMINISTRATEUR */}
-      
-
       {/* HEADER */}
       <div>
         <p className="text-sm font-medium text-[#2814e8]">
@@ -461,8 +487,8 @@ if (
         </p>
 
         <h1 className="mt-2 text-3xl font-semibold tracking-tight">
-  Bonjour {greetingName}
-</h1>
+          Bonjour {greetingName}
+        </h1>
 
         <p className="mt-2 text-muted-foreground">
           Retrouvez ici l&apos;avancement de votre
@@ -472,12 +498,12 @@ if (
 
       {/* KPI */}
       <div
-  className={`grid gap-4 md:grid-cols-2 ${
-    hasTraining
-      ? "xl:grid-cols-4"
-      : "xl:grid-cols-3"
-  }`}
->
+        className={`grid gap-4 md:grid-cols-2 ${
+          hasTraining
+            ? "xl:grid-cols-4"
+            : "xl:grid-cols-3"
+        }`}
+      >
         <DashboardStatCard
           label="Statut de l'accompagnement"
           icon={
@@ -485,16 +511,29 @@ if (
           }
         >
           <div className="mt-3">
-            <Badge className="bg-emerald-50 text-emerald-700 hover:bg-emerald-50">
-              {formatCompanyStatus(
-                company.status
-              )}
+            <Badge
+              className={
+                auditIsCompleted
+                  ? "bg-blue-50 text-blue-700 hover:bg-blue-50"
+                  : "bg-emerald-50 text-emerald-700 hover:bg-emerald-50"
+              }
+            >
+              {accompanimentStatus}
             </Badge>
           </div>
 
           <div className="mt-4 flex items-center gap-2 text-xs text-muted-foreground">
-            <span className="h-2 w-2 rounded-full bg-emerald-500" />
-            Accompagnement en cours
+            <span
+              className={`h-2 w-2 rounded-full ${
+                auditIsCompleted
+                  ? "bg-blue-500"
+                  : "bg-emerald-500"
+              }`}
+            />
+
+            {auditIsCompleted
+              ? "Accompagnement terminé"
+              : "Accompagnement en cours"}
           </div>
         </DashboardStatCard>
 
@@ -549,21 +588,21 @@ if (
         )}
 
         {hasTraining && (
-  <DashboardStatCard
-    label="Participants accompagnés"
-    icon={
-      <Users className="h-5 w-5" />
-    }
-  >
-    <p className="mt-3 text-2xl font-semibold">
-      {totalParticipants}
-    </p>
+          <DashboardStatCard
+            label="Participants accompagnés"
+            icon={
+              <Users className="h-5 w-5" />
+            }
+          >
+            <p className="mt-3 text-2xl font-semibold">
+              {totalParticipants}
+            </p>
 
-    <p className="mt-2 text-xs text-muted-foreground">
-      Collaborateurs inscrits
-    </p>
-  </DashboardStatCard>
-)}
+            <p className="mt-2 text-xs text-muted-foreground">
+              Collaborateurs inscrits
+            </p>
+          </DashboardStatCard>
+        )}
       </div>
 
       {/* ACCOMPAGNEMENT + RÉSUMÉ */}
@@ -641,6 +680,7 @@ if (
                 nextTrainingDate:
                   nextTraining?.date ??
                   null,
+                auditIsCompleted,
               })}
             </p>
           </div>
@@ -728,7 +768,7 @@ if (
           )}
         </div>
 
-        {/* CONTACT RÉFÉRENT DARWELL */}
+        {/* CONTACT */}
         <div className="flex min-h-[290px] flex-col items-center justify-center rounded-2xl border bg-white p-8 text-center">
           <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[#2814e8]/10 text-[#2814e8]">
             <UserRound className="h-7 w-7" />
@@ -758,12 +798,12 @@ if (
             </p>
 
             <a
-  href={`https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(
-    "dougpinto.pro@gmail.com"
-  )}&su=${encodeURIComponent(
-    `Question concernant mon accompagnement Darwell - ${company.name}`
-  )}&body=${encodeURIComponent(
-    `Bonjour Douglas,
+              href={`https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(
+                "dougpinto.pro@gmail.com"
+              )}&su=${encodeURIComponent(
+                `Question concernant mon accompagnement Darwell - ${company.name}`
+              )}&body=${encodeURIComponent(
+                `Bonjour Douglas,
 
 J'ai une question concernant l'accompagnement Darwell de ${company.name}.
 
@@ -771,14 +811,14 @@ Ma question :
 
 Merci,
 `
-  )}`}
-  target="_blank"
-  rel="noopener noreferrer"
-  className="mt-5 inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-[#2814e8]/30 bg-white px-5 text-sm font-medium text-[#2814e8] transition hover:bg-[#2814e8]/5"
->
-  <Mail className="h-4 w-4" />
-  Envoyer un email
-</a>
+              )}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-5 inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-[#2814e8]/30 bg-white px-5 text-sm font-medium text-[#2814e8] transition hover:bg-[#2814e8]/5"
+            >
+              <Mail className="h-4 w-4" />
+              Envoyer un email
+            </a>
           </div>
         </div>
       </div>
@@ -889,7 +929,7 @@ function AuditProgress({
   auditStatus: string | null;
 }) {
   const auditComplete =
-    auditStatus === "completed";
+    isAuditCompleted(auditStatus);
 
   return (
     <ProgressSteps
@@ -900,8 +940,9 @@ function AuditProgress({
         },
         {
           label: "Entretiens",
-          status:
-            transcriptCount > 0
+          status: auditComplete
+            ? "completed"
+            : transcriptCount > 0
               ? "completed"
               : "active",
         },
@@ -916,7 +957,7 @@ function AuditProgress({
         {
           label: "Restitution",
           status: auditComplete
-            ? "active"
+            ? "completed"
             : "upcoming",
         },
       ]}
@@ -935,6 +976,9 @@ function CombinedProgress({
   auditStarted: boolean;
   auditStatus: string | null;
 }) {
+  const auditComplete =
+    isAuditCompleted(auditStatus);
+
   return (
     <ProgressSteps
       steps={[
@@ -954,8 +998,7 @@ function CombinedProgress({
         {
           label: "Audit",
           status:
-            auditStatus ===
-            "completed"
+            auditComplete
               ? "completed"
               : auditStarted
                 ? "active"
@@ -964,9 +1007,8 @@ function CombinedProgress({
         {
           label: "Restitution",
           status:
-            auditStatus ===
-            "completed"
-              ? "active"
+            auditComplete
+              ? "completed"
               : "upcoming",
         },
       ]}
@@ -1092,6 +1134,42 @@ function ActivityRow({
       </div>
     </div>
   );
+}
+
+function isAuditCompleted(
+  status: string | null
+) {
+  return (
+    status === "Terminé" ||
+    status === "completed"
+  );
+}
+
+function formatAuditStatus(
+  status: string | null
+) {
+  if (
+    status === "Terminé" ||
+    status === "completed"
+  ) {
+    return "Terminé";
+  }
+
+  if (
+    status === "En cours" ||
+    status === "active"
+  ) {
+    return "En cours";
+  }
+
+  if (
+    status === "À venir" ||
+    status === "pending"
+  ) {
+    return "À venir";
+  }
+
+  return status || "—";
 }
 
 function formatCompanyStatus(
@@ -1237,6 +1315,7 @@ function getAccompanimentMessage({
   totalSessions,
   totalTranscripts,
   nextTrainingDate,
+  auditIsCompleted,
 }: {
   hasTraining: boolean;
   hasAudit: boolean;
@@ -1244,7 +1323,43 @@ function getAccompanimentMessage({
   totalSessions: number;
   totalTranscripts: number;
   nextTrainingDate: string | null;
+  auditIsCompleted: boolean;
 }) {
+  /*
+   * AUDIT TERMINÉ
+   */
+  if (
+    hasAudit &&
+    auditIsCompleted
+  ) {
+    if (
+      hasTraining
+    ) {
+      return `Votre audit IA est terminé. ${totalTranscripts} entretien${
+        totalTranscripts > 1
+          ? "s ont"
+          : " a"
+      } été réalisé${
+        totalTranscripts > 1
+          ? "s"
+          : ""
+      }. Vous pouvez maintenant consulter les résultats et les livrables de votre accompagnement.`;
+    }
+
+    return `Votre audit IA est terminé. ${totalTranscripts} entretien${
+      totalTranscripts > 1
+        ? "s ont"
+        : " a"
+    } été réalisé${
+      totalTranscripts > 1
+        ? "s"
+        : ""
+    }. Retrouvez les résultats et les livrables de votre audit dans votre espace Darwell.`;
+  }
+
+  /*
+   * FORMATION UNIQUEMENT
+   */
   if (
     hasTraining &&
     !hasAudit
@@ -1276,6 +1391,9 @@ function getAccompanimentMessage({
     return "Votre accompagnement Darwell est bien lancé. Vos prochaines sessions et actions apparaîtront ici dès qu'elles seront planifiées.";
   }
 
+  /*
+   * AUDIT UNIQUEMENT
+   */
   if (
     hasAudit &&
     !hasTraining
@@ -1297,6 +1415,9 @@ function getAccompanimentMessage({
     return "Votre audit IA est en cours de préparation. Les entretiens, analyses et prochaines étapes seront progressivement visibles dans votre espace.";
   }
 
+  /*
+   * FORMATION + AUDIT
+   */
   if (
     hasTraining &&
     hasAudit
