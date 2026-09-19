@@ -45,10 +45,6 @@ export default async function RoadmapPage({
 
   /*
    * 3 — ENTREPRISE
-   *
-   * Deux modes :
-   * - client connecté normalement
-   * - admin avec ?preview=slug
    */
   let company;
 
@@ -86,9 +82,6 @@ export default async function RoadmapPage({
 
   /*
    * 4 — AUDIT
-   *
-   * Utilisé pour alimenter la page Roadmap
-   * des clients Audit.
    */
   const { data: audit, error: auditError } =
     await supabase
@@ -104,10 +97,17 @@ export default async function RoadmapPage({
   }
 
   /*
-   * 5 — GMAIL PRÉREMPLI
+   * SOURCE DE VÉRITÉ
    *
-   * Utilisé uniquement pour la version destinée
-   * aux clients Formation.
+   * On accepte temporairement les deux formats
+   * pour rester compatible avec les anciennes données.
+   */
+  const auditIsCompleted =
+    audit?.status === "Terminé" ||
+    audit?.status === "completed";
+
+  /*
+   * 5 — GMAIL PRÉREMPLI
    */
   const gmailSubject =
     "Échange concernant une Roadmap IA Darwell";
@@ -132,9 +132,6 @@ Merci.`;
 
   /*
    * 6 — CLIENT AUDIT
-   *
-   * La roadmap définitive n'est pas encore renseignée.
-   * On affiche donc une page d'attente structurée.
    */
   if (company.type !== "formation") {
     return (
@@ -150,10 +147,9 @@ Merci.`;
           </h1>
 
           <p className="mt-2 max-w-2xl text-muted-foreground">
-            La roadmap de {company.name} est actuellement en
-            préparation. Elle traduira les conclusions de votre
-            audit en initiatives prioritaires et directement
-            actionnables.
+            {auditIsCompleted
+              ? `L'audit IA de ${company.name} est terminé. Votre feuille de route synthétise les priorités identifiées et les prochaines actions à engager.`
+              : `La roadmap de ${company.name} est actuellement en préparation. Elle traduira les conclusions de votre audit en initiatives prioritaires et directement actionnables.`}
           </p>
         </div>
 
@@ -161,12 +157,15 @@ Merci.`;
         <div className="rounded-2xl border bg-white p-6">
           <div>
             <h2 className="text-lg font-semibold">
-              Construction de votre roadmap
+              {auditIsCompleted
+                ? "Votre roadmap est finalisée"
+                : "Construction de votre roadmap"}
             </h2>
 
             <p className="mt-2 text-sm leading-6 text-muted-foreground">
-              Nous transformons les enseignements de votre audit
-              en un plan d&apos;action structuré et priorisé.
+              {auditIsCompleted
+                ? "Les différentes étapes de votre audit et de la construction de votre feuille de route ont été réalisées."
+                : "Nous transformons les enseignements de votre audit en un plan d'action structuré et priorisé."}
             </p>
           </div>
 
@@ -178,47 +177,80 @@ Merci.`;
             />
 
             <RoadmapProgressItem
-              status="active"
+              status={
+                auditIsCompleted
+                  ? "completed"
+                  : "active"
+              }
               title="Analyse et priorisation"
               description="Identification et classement des opportunités IA les plus pertinentes."
             />
 
             <RoadmapProgressItem
-              status="pending"
+              status={
+                auditIsCompleted
+                  ? "completed"
+                  : "pending"
+              }
               title="Construction du plan d'action"
               description="Organisation des initiatives, priorités et prochaines actions."
             />
 
             <RoadmapProgressItem
-              status="pending"
+              status={
+                auditIsCompleted
+                  ? "completed"
+                  : "pending"
+              }
               title="Restitution"
               description="Présentation de la roadmap et des recommandations."
               last
             />
           </div>
 
-          {audit?.next_step && (
+          {auditIsCompleted ? (
             <div className="mt-6 rounded-xl bg-[#2814e8]/[0.04] p-4">
               <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                Prochaine étape
+                Statut
               </p>
 
               <p className="mt-2 text-sm font-semibold">
-                {audit.next_step}
+                Audit et roadmap terminés
+              </p>
+
+              <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                Votre accompagnement d&apos;audit IA est arrivé
+                à son terme. Retrouvez vos livrables et
+                recommandations dans votre espace Darwell.
               </p>
             </div>
+          ) : (
+            audit?.next_step && (
+              <div className="mt-6 rounded-xl bg-[#2814e8]/[0.04] p-4">
+                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Prochaine étape
+                </p>
+
+                <p className="mt-2 text-sm font-semibold">
+                  {audit.next_step}
+                </p>
+              </div>
+            )
           )}
         </div>
 
-        {/* CONTENU À VENIR */}
+        {/* CONTENU ROADMAP */}
         <div className="rounded-2xl border bg-white p-6">
           <h2 className="text-lg font-semibold">
-            Ce que vous retrouverez dans votre roadmap
+            {auditIsCompleted
+              ? "Les axes de votre roadmap"
+              : "Ce que vous retrouverez dans votre roadmap"}
           </h2>
 
           <p className="mt-2 text-sm text-muted-foreground">
-            Chaque initiative sera évaluée afin de vous aider à
-            décider quoi lancer et dans quel ordre.
+            {auditIsCompleted
+              ? "Votre feuille de route vous permet de prioriser les initiatives identifiées selon leur valeur et leur niveau d'effort."
+              : "Chaque initiative sera évaluée afin de vous aider à décider quoi lancer et dans quel ordre."}
           </p>
 
           <div className="mt-6 grid gap-4 md:grid-cols-3">
@@ -245,8 +277,7 @@ Merci.`;
   /*
    * 7 — CLIENT FORMATION
    *
-   * On conserve ta page actuelle de présentation commerciale
-   * de la Roadmap IA.
+   * Aucun changement sur cette partie.
    */
   return (
     <div className="mx-auto max-w-6xl space-y-6">
@@ -345,7 +376,6 @@ Merci.`;
           </div>
 
           <div className="flex items-center gap-4">
-            {/* FORMATION */}
             <div className="text-center">
               <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-[#2814e8] text-white">
                 ✓
@@ -362,7 +392,6 @@ Merci.`;
 
             <ArrowRight className="h-4 w-4 text-muted-foreground" />
 
-            {/* ROADMAP */}
             <div className="text-center">
               <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full border border-[#2814e8] bg-white text-sm font-semibold text-[#2814e8] ring-4 ring-[#2814e8]/[0.06]">
                 2
@@ -379,7 +408,6 @@ Merci.`;
 
             <ArrowRight className="h-4 w-4 text-muted-foreground" />
 
-            {/* DÉPLOIEMENT */}
             <div className="text-center">
               <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full border bg-white text-sm font-semibold text-muted-foreground">
                 3
