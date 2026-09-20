@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { Loader2 } from "lucide-react";
 
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -152,7 +153,7 @@ export default function ResetPasswordPage() {
                 }
                 required
                 minLength={8}
-                disabled={!sessionReady}
+                disabled={!sessionReady || loading}
                 className="w-full rounded-md border bg-background px-3 py-2 text-sm"
               />
             </div>
@@ -174,7 +175,7 @@ export default function ResetPasswordPage() {
                 }
                 required
                 minLength={8}
-                disabled={!sessionReady}
+                disabled={!sessionReady || loading}
                 className="w-full rounded-md border bg-background px-3 py-2 text-sm"
               />
             </div>
@@ -187,17 +188,25 @@ export default function ResetPasswordPage() {
 
             <Button
               type="submit"
-              className="w-full"
+              className="h-10 w-full"
               disabled={loading || !sessionReady}
             >
-              {loading
-                ? "Activation..."
-                : sessionReady
-                  ? "Activer mon compte"
-                  : "Vérification de l'invitation..."}
+              {loading ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Activation...
+                </>
+              ) : sessionReady ? (
+                "Activer mon compte"
+              ) : (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Vérification...
+                </>
+              )}
             </Button>
           </form>
-                </CardContent>
+        </CardContent>
       </Card>
     </main>
   );

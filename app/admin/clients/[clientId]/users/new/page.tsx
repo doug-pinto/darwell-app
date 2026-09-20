@@ -4,7 +4,7 @@ import { ArrowLeft } from "lucide-react";
 
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { Button } from "@/components/ui/button";
+import { InviteUserSubmitButton } from "@/components/invite-user-submit-button";
 import {
   Card,
   CardContent,
@@ -37,7 +37,6 @@ export default async function NewUserPage({
     );
   }
 
-  // On extrait les valeurs après avoir vérifié que company existe.
   const companyId = company.id;
   const companySlug = company.slug;
 
@@ -57,11 +56,12 @@ export default async function NewUserPage({
     }
 
     // 2. Vérifier que l'utilisateur connecté est administrateur.
-    const { data: profile, error: profileError } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("id", user.id)
-      .single();
+    const { data: profile, error: profileError } =
+      await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", user.id)
+        .single();
 
     if (profileError || profile?.role !== "admin") {
       throw new Error("Accès refusé.");
@@ -80,23 +80,27 @@ export default async function NewUserPage({
       .toLowerCase();
 
     if (!fullName || !email) {
-      throw new Error("Le nom et l'email sont obligatoires.");
+      throw new Error(
+        "Le nom et l'email sont obligatoires."
+      );
     }
 
     // 4. Créer le client Supabase privilégié.
-    // Il n'est utilisé qu'après vérification du rôle admin.
     const adminSupabase = createAdminClient();
 
     // 5. Inviter l'utilisateur via Supabase Auth.
     const { data, error: inviteError } =
-  await adminSupabase.auth.admin.inviteUserByEmail(email, {
-    redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/reset-password`,
-    data: {
-      full_name: fullName,
-      company_id: companyId,
-      role: "client",
-    },
-  });
+      await adminSupabase.auth.admin.inviteUserByEmail(
+        email,
+        {
+          redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/reset-password`,
+          data: {
+            full_name: fullName,
+            company_id: companyId,
+            role: "client",
+          },
+        }
+      );
 
     if (inviteError) {
       throw new Error(
@@ -111,15 +115,16 @@ export default async function NewUserPage({
     }
 
     // 6. Créer ou mettre à jour le profil Darwell.
-    const { error: profileInsertError } = await adminSupabase
-      .from("profiles")
-      .upsert({
-        id: data.user.id,
-        email,
-        full_name: fullName,
-        role: "client",
-        company_id: companyId,
-      });
+    const { error: profileInsertError } =
+      await adminSupabase
+        .from("profiles")
+        .upsert({
+          id: data.user.id,
+          email,
+          full_name: fullName,
+          role: "client",
+          company_id: companyId,
+        });
 
     if (profileInsertError) {
       throw new Error(
@@ -128,14 +133,16 @@ export default async function NewUserPage({
     }
 
     // 7. Retour vers la fiche du client.
-    redirect(`/admin/clients/${companySlug}`);
+    redirect(
+      `/admin/clients/${companySlug}`
+    );
   }
 
   return (
     <div className="mx-auto max-w-2xl">
       <Link
         href={`/admin/clients/${companySlug}`}
-        className="mb-6 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
+        className="mb-6 inline-flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
       >
         <ArrowLeft className="h-4 w-4" />
         Retour au client
@@ -147,17 +154,23 @@ export default async function NewUserPage({
         </h1>
 
         <p className="mt-2 text-muted-foreground">
-          Invitez un utilisateur à accéder à l’espace {company.name}.
+          Invitez un utilisateur à accéder à
+          l’espace {company.name}.
         </p>
       </div>
 
-      <Card>
+      <Card className="rounded-2xl">
         <CardHeader>
-          <CardTitle>Nouvel utilisateur</CardTitle>
+          <CardTitle>
+            Nouvel utilisateur
+          </CardTitle>
         </CardHeader>
 
         <CardContent>
-          <form action={inviteUser} className="space-y-6">
+          <form
+            action={inviteUser}
+            className="space-y-6"
+          >
             <div className="space-y-2">
               <label
                 htmlFor="full_name"
@@ -197,14 +210,12 @@ export default async function NewUserPage({
             <div className="flex justify-end gap-3">
               <Link
                 href={`/admin/clients/${companySlug}`}
-                className="inline-flex h-9 items-center justify-center rounded-md border bg-background px-4 text-sm font-medium"
+                className="inline-flex h-10 items-center justify-center rounded-md border bg-background px-4 text-sm font-medium transition-colors hover:bg-muted"
               >
                 Annuler
               </Link>
 
-              <Button type="submit">
-                Envoyer l’invitation
-              </Button>
+              <InviteUserSubmitButton />
             </div>
           </form>
         </CardContent>
