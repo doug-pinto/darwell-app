@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import {
-  CalendarDays,
   ChevronDown,
   ChevronUp,
   Clock3,
@@ -17,9 +16,9 @@ const MAX_PARTICIPANTS = 10;
 
 type Participant = {
   id: string;
-  first_name: string | null;
-  last_name: string | null;
-  email: string | null;
+  first_name: string;
+  last_name: string;
+  email: string;
 };
 
 type ClientTrainingSessionCardProps = {
