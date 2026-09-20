@@ -2,6 +2,7 @@ import Link from "next/link";
 import { revalidatePath } from "next/cache";
 import {
   ArrowLeft,
+  ChevronDown,
   ExternalLink,
   FileText,
   Mail,
@@ -958,56 +959,128 @@ export default async function ClientPage({
                           />
                         </div>
 
+                        {/* PARTICIPANTS */}
                         <div className="mt-5 border-t pt-4">
-                          <div className="flex items-center justify-between">
-                            <p className="text-sm font-medium">
-                              Participants
-                            </p>
-
-                            <Badge variant="secondary">
-                              {
-                                sessionParticipants.length
-                              }
-                            </Badge>
-                          </div>
-
-                          {sessionParticipants.length >
+                          {sessionParticipants.length ===
                           0 ? (
-                            <div className="mt-3 space-y-2">
-                              {sessionParticipants.map(
-                                (
-                                  participant
-                                ) => (
-                                  <div
-                                    key={
-                                      participant.id
-                                    }
-                                    className="rounded-lg bg-muted/40 px-3 py-2"
-                                  >
-                                    <p className="text-sm font-medium">
-                                      {
-                                        participant.first_name
-                                      }{" "}
-                                      {
-                                        participant.last_name
-                                      }
-                                    </p>
+                            <>
+                              <div className="flex items-center justify-between">
+                                <p className="text-sm font-medium">
+                                  Participants
+                                </p>
 
-                                    {participant.email && (
-                                      <p className="mt-0.5 text-xs text-muted-foreground">
+                                <Badge variant="secondary">
+                                  0
+                                </Badge>
+                              </div>
+
+                              <p className="mt-3 text-sm text-muted-foreground">
+                                Aucun participant renseigné.
+                              </p>
+                            </>
+                          ) : sessionParticipants.length <=
+                            4 ? (
+                            <>
+                              <div className="flex items-center justify-between">
+                                <p className="text-sm font-medium">
+                                  Participants
+                                </p>
+
+                                <Badge variant="secondary">
+                                  {
+                                    sessionParticipants.length
+                                  }
+                                </Badge>
+                              </div>
+
+                              <div className="mt-3 space-y-2">
+                                {sessionParticipants.map(
+                                  (
+                                    participant
+                                  ) => (
+                                    <div
+                                      key={
+                                        participant.id
+                                      }
+                                      className="rounded-lg bg-muted/40 px-3 py-2"
+                                    >
+                                      <p className="text-sm font-medium">
                                         {
-                                          participant.email
+                                          participant.first_name
+                                        }{" "}
+                                        {
+                                          participant.last_name
                                         }
                                       </p>
-                                    )}
-                                  </div>
-                                )
-                              )}
-                            </div>
+
+                                      {participant.email && (
+                                        <p className="mt-0.5 text-xs text-muted-foreground">
+                                          {
+                                            participant.email
+                                          }
+                                        </p>
+                                      )}
+                                    </div>
+                                  )
+                                )}
+                              </div>
+                            </>
                           ) : (
-                            <p className="mt-3 text-sm text-muted-foreground">
-                              Aucun participant renseigné.
-                            </p>
+                            <details className="group">
+                              <summary className="flex cursor-pointer list-none items-center justify-between rounded-lg outline-none">
+                                <div className="flex items-center gap-3">
+                                  <p className="text-sm font-medium">
+                                    Participants
+                                  </p>
+
+                                  <Badge variant="secondary">
+                                    {
+                                      sessionParticipants.length
+                                    }
+                                  </Badge>
+                                </div>
+
+                                <div className="flex items-center gap-2 text-sm text-muted-foreground transition-colors group-hover:text-foreground">
+                                  <span>
+                                    Afficher les participants
+                                  </span>
+
+                                  <ChevronDown className="h-4 w-4 transition-transform duration-200 group-open:rotate-180" />
+                                </div>
+                              </summary>
+
+                              <div className="mt-4 space-y-2">
+                                {sessionParticipants.map(
+                                  (
+                                    participant
+                                  ) => (
+                                    <div
+                                      key={
+                                        participant.id
+                                      }
+                                      className="rounded-lg bg-muted/40 px-3 py-2"
+                                    >
+                                      <p className="text-sm font-medium">
+                                        {
+                                          participant.first_name
+                                        }{" "}
+                                        {
+                                          participant.last_name
+                                        }
+                                      </p>
+
+                                      {participant.email && (
+                                        <p className="mt-0.5 text-xs text-muted-foreground">
+                                          {
+                                            participant.email
+                                          }
+                                        </p>
+                                      )}
+                                    </div>
+                                  )
+                                )}
+                              </div>
+                            </details>
                           )}
                         </div>
                       </div>
