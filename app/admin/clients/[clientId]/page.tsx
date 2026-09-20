@@ -13,6 +13,7 @@ import {
 import { createClient } from "@/lib/supabase/server";
 import { DocumentsCard } from "@/components/documents-card";
 import { AuditReportUpload } from "@/components/audit-report-upload";
+import { DeleteClientUserButton } from "@/components/delete-client-user-button";
 import { Badge } from "@/components/ui/badge";
 import {
   Card,
@@ -111,7 +112,9 @@ export default async function ClientPage({
   } = trainingSession
     ? await supabase
         .from("training_participants")
-        .select("id, first_name, last_name, email")
+        .select(
+          "id, first_name, last_name, email"
+        )
         .eq(
           "training_session_id",
           trainingSession.id
@@ -172,31 +175,34 @@ export default async function ClientPage({
   /*
    * URLS SIGNÉES DES TRANSCRIPTS
    */
-  const transcriptsWithUrls = await Promise.all(
-    (transcripts ?? []).map(async (transcript) => {
-      if (!transcript.file_path) {
-        return {
-          ...transcript,
-          signedUrl: null,
-        };
-      }
+  const transcriptsWithUrls =
+    await Promise.all(
+      (transcripts ?? []).map(
+        async (transcript) => {
+          if (!transcript.file_path) {
+            return {
+              ...transcript,
+              signedUrl: null,
+            };
+          }
 
-      const { data, error } =
-        await supabase.storage
-          .from("audit-transcripts")
-          .createSignedUrl(
-            transcript.file_path,
-            60 * 10
-          );
+          const { data, error } =
+            await supabase.storage
+              .from("audit-transcripts")
+              .createSignedUrl(
+                transcript.file_path,
+                60 * 10
+              );
 
-      return {
-        ...transcript,
-        signedUrl: error
-          ? null
-          : data.signedUrl,
-      };
-    })
-  );
+          return {
+            ...transcript,
+            signedUrl: error
+              ? null
+              : data.signedUrl,
+          };
+        }
+      )
+    );
 
   /*
    * SUPPRIMER UN TRANSCRIPT
@@ -349,31 +355,34 @@ export default async function ClientPage({
     );
   }
 
-  const documentsWithUrls = await Promise.all(
-    (documents ?? []).map(async (document) => {
-      if (!document.storage_path) {
-        return {
-          ...document,
-          signedUrl: null,
-        };
-      }
+  const documentsWithUrls =
+    await Promise.all(
+      (documents ?? []).map(
+        async (document) => {
+          if (!document.storage_path) {
+            return {
+              ...document,
+              signedUrl: null,
+            };
+          }
 
-      const { data, error } =
-        await supabase.storage
-          .from("client-documents")
-          .createSignedUrl(
-            document.storage_path,
-            60 * 10
-          );
+          const { data, error } =
+            await supabase.storage
+              .from("client-documents")
+              .createSignedUrl(
+                document.storage_path,
+                60 * 10
+              );
 
-      return {
-        ...document,
-        signedUrl: error
-          ? null
-          : data.signedUrl,
-      };
-    })
-  );
+          return {
+            ...document,
+            signedUrl: error
+              ? null
+              : data.signedUrl,
+          };
+        }
+      )
+    );
 
   /*
    * RAPPORT D'AUDIT
@@ -454,7 +463,9 @@ export default async function ClientPage({
             </p>
 
             <div className="mt-2">
-              <ServiceBadge type={company.type} />
+              <ServiceBadge
+                type={company.type}
+              />
             </div>
           </div>
 
@@ -464,7 +475,9 @@ export default async function ClientPage({
             </p>
 
             <div className="mt-2 flex items-center gap-2">
-              <StatusDot status={company.status} />
+              <StatusDot
+                status={company.status}
+              />
 
               <span className="text-sm font-medium">
                 {formatCompanyStatus(
@@ -512,7 +525,6 @@ export default async function ClientPage({
 
                 {audit ? (
                   <div className="flex flex-wrap items-center justify-end gap-2">
-                    {/* MODIFIER */}
                     <Link
                       href={`/admin/clients/${companySlug}/audit/edit`}
                       className="inline-flex h-9 shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-lg border bg-background px-3 text-sm font-medium transition-colors hover:bg-muted"
@@ -521,7 +533,6 @@ export default async function ClientPage({
                       Modifier
                     </Link>
 
-                    {/* RAPPORT */}
                     <AuditReportUpload
                       companyId={companyId}
                       existingReport={
@@ -535,7 +546,6 @@ export default async function ClientPage({
                       }
                     />
 
-                    {/* TRANSCRIPT */}
                     <Link
                       href={`/admin/clients/${companySlug}/audit/transcripts/new`}
                       className="inline-flex h-9 shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
@@ -563,7 +573,6 @@ export default async function ClientPage({
                 </p>
               ) : (
                 <div className="space-y-6">
-                  {/* RAPPORT D'AUDIT */}
                   <div>
                     <p className="mb-3 text-sm font-medium">
                       Rapport d&apos;audit
@@ -606,14 +615,12 @@ export default async function ClientPage({
                     ) : (
                       <div className="rounded-xl border border-dashed p-4">
                         <p className="text-sm text-muted-foreground">
-                          Aucun rapport d&apos;audit ajouté pour
-                          le moment.
+                          Aucun rapport d&apos;audit ajouté pour le moment.
                         </p>
                       </div>
                     )}
                   </div>
 
-                  {/* ENTRETIENS */}
                   <div className="border-t pt-5">
                     <p className="mb-3 text-sm font-medium">
                       Entretiens
@@ -646,7 +653,6 @@ export default async function ClientPage({
                                   {transcript.file_name && (
                                     <div className="mt-3 flex items-center gap-2 text-sm text-muted-foreground">
                                       <FileText className="h-4 w-4 shrink-0" />
-
                                       <span className="truncate">
                                         {
                                           transcript.file_name
@@ -710,8 +716,7 @@ export default async function ClientPage({
                     ) : (
                       <div className="py-2">
                         <p className="text-sm text-muted-foreground">
-                          Aucun transcript ajouté pour
-                          cet audit.
+                          Aucun transcript ajouté pour cet audit.
                         </p>
                       </div>
                     )}
@@ -930,35 +935,49 @@ export default async function ClientPage({
                       {user.email &&
                         user.role ===
                           "client" && (
-                          <form
-                            action={
-                              sendUserAccess
-                            }
-                          >
-                            <input
-                              type="hidden"
-                              name="email"
-                              value={
-                                user.email
+                          <div className="flex shrink-0 items-center gap-2">
+                            {/* ENVOYER L'ACCÈS */}
+                            <form
+                              action={
+                                sendUserAccess
                               }
-                            />
-
-                            <input
-                              type="hidden"
-                              name="company_id"
-                              value={
-                                companyId
-                              }
-                            />
-
-                            <button
-                              type="submit"
-                              className="inline-flex h-9 shrink-0 items-center justify-center gap-2 rounded-lg border bg-background px-3 text-sm font-medium transition-colors hover:bg-muted"
                             >
-                              <Mail className="h-4 w-4" />
-                              Envoyer l&apos;accès
-                            </button>
-                          </form>
+                              <input
+                                type="hidden"
+                                name="email"
+                                value={
+                                  user.email
+                                }
+                              />
+
+                              <input
+                                type="hidden"
+                                name="company_id"
+                                value={
+                                  companyId
+                                }
+                              />
+
+                              <button
+                                type="submit"
+                                className="inline-flex h-9 shrink-0 items-center justify-center gap-2 rounded-lg border bg-background px-3 text-sm font-medium transition-colors hover:bg-muted"
+                              >
+                                <Mail className="h-4 w-4" />
+                                Envoyer l&apos;accès
+                              </button>
+                            </form>
+
+                            {/* SUPPRIMER L'UTILISATEUR */}
+                            <DeleteClientUserButton
+                              userId={user.id}
+                              companyId={companyId}
+                              userName={
+                                user.full_name ||
+                                user.email ||
+                                "cet utilisateur"
+                              }
+                            />
+                          </div>
                         )}
                     </div>
                   </div>
@@ -1025,11 +1044,7 @@ function ServiceBadge({
     );
   }
 
-  return (
-    <Badge variant="outline">
-      —
-    </Badge>
-  );
+  return <Badge variant="outline">—</Badge>;
 }
 
 function StatusDot({
