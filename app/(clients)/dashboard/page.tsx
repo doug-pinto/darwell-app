@@ -65,9 +65,7 @@ export default async function DashboardPage({
   if (profile.role === "admin" && preview) {
     const { data, error } = await supabase
       .from("companies")
-      .select(
-        "id, name, slug, type, status, created_at"
-      )
+      .select("id, name, slug, type, status, created_at")
       .eq("slug", preview)
       .single();
 
@@ -85,9 +83,7 @@ export default async function DashboardPage({
 
     const { data, error } = await supabase
       .from("companies")
-      .select(
-        "id, name, slug, type, status, created_at"
-      )
+      .select("id, name, slug, type, status, created_at")
       .eq("id", profile.company_id)
       .single();
 
@@ -144,9 +140,7 @@ export default async function DashboardPage({
    * 6 — PARTICIPANTS
    */
   const sessionIds =
-    trainingSessions?.map(
-      (session) => session.id
-    ) ?? [];
+    trainingSessions?.map((session) => session.id) ?? [];
 
   let trainingParticipants: {
     id: string;
@@ -174,9 +168,7 @@ export default async function DashboardPage({
   const { data: audit, error: auditError } =
     await supabase
       .from("audits")
-      .select(
-        "id, title, status, summary, next_step"
-      )
+      .select("id, title, status, summary, next_step")
       .eq("company_id", company.id)
       .maybeSingle();
 
@@ -188,12 +180,6 @@ export default async function DashboardPage({
 
   /*
    * SOURCE DE VÉRITÉ DE L'AUDIT
-   *
-   * Nouveau format :
-   * En cours / Terminé
-   *
-   * Ancien format conservé temporairement :
-   * active / completed
    */
   const auditIsCompleted =
     audit?.status === "Terminé" ||
@@ -231,9 +217,7 @@ export default async function DashboardPage({
     error: documentsError,
   } = await supabase
     .from("documents")
-    .select(
-      "id, title, type, created_at"
-    )
+    .select("id, title, type, created_at")
     .eq("company_id", company.id)
     .order("created_at", {
       ascending: false,
@@ -264,8 +248,7 @@ export default async function DashboardPage({
 
   const completedSessions =
     trainingSessions?.filter(
-      (session) =>
-        session.status === "completed"
+      (session) => session.status === "completed"
     ) ?? [];
 
   const upcomingSessions =
@@ -298,9 +281,6 @@ export default async function DashboardPage({
 
   /*
    * 12 — STATUT GLOBAL AFFICHÉ
-   *
-   * Pour un client Audit :
-   * audits.status est prioritaire.
    */
   let accompanimentStatus =
     formatCompanyStatus(company.status);
@@ -319,10 +299,7 @@ export default async function DashboardPage({
   let nextStepDescription =
     "Votre équipe Darwell poursuit votre accompagnement.";
 
-  if (
-    hasAudit &&
-    auditIsCompleted
-  ) {
+  if (hasAudit && auditIsCompleted) {
     nextStepTitle = "Audit terminé";
 
     nextStepDescription =
@@ -365,17 +342,13 @@ export default async function DashboardPage({
   const activities: Activity[] = [];
 
   for (const session of trainingSessions ?? []) {
-    if (
-      session.status === "completed"
-    ) {
+    if (session.status === "completed") {
       activities.push({
         id: `training-${session.id}`,
-        title:
-          "Session de formation réalisée",
-        description:
-          session.location
-            ? `Session réalisée à ${session.location}`
-            : "Session de formation terminée",
+        title: "Session de formation réalisée",
+        description: session.location
+          ? `Session réalisée à ${session.location}`
+          : "Session de formation terminée",
         date: session.date,
         type: "formation",
       });
@@ -385,12 +358,9 @@ export default async function DashboardPage({
   for (const document of documents ?? []) {
     activities.push({
       id: `document-${document.id}`,
-      title:
-        "Nouveau document disponible",
-      description:
-        document.title,
-      date:
-        document.created_at,
+      title: "Nouveau document disponible",
+      description: document.title,
+      date: document.created_at,
       type: "document",
     });
   }
@@ -398,8 +368,7 @@ export default async function DashboardPage({
   for (const transcript of transcripts ?? []) {
     activities.push({
       id: `audit-${transcript.id}`,
-      title:
-        "Entretien d'audit réalisé",
+      title: "Entretien d'audit réalisé",
       description:
         transcript.interviewee_name
           ? `Entretien avec ${transcript.interviewee_name}`
@@ -737,18 +706,13 @@ export default async function DashboardPage({
             Dernières activités
           </h2>
 
-          {latestActivities.length >
-          0 ? (
+          {latestActivities.length > 0 ? (
             <div className="mt-5 divide-y">
               {latestActivities.map(
                 (activity) => (
                   <ActivityRow
-                    key={
-                      activity.id
-                    }
-                    activity={
-                      activity
-                    }
+                    key={activity.id}
+                    activity={activity}
                   />
                 )
               )}
@@ -892,8 +856,7 @@ function TrainingProgress({
 
   const trainingComplete =
     totalSessions > 0 &&
-    completedSessions ===
-      totalSessions;
+    completedSessions === totalSessions;
 
   return (
     <ProgressSteps
@@ -1092,8 +1055,7 @@ function ActivityRow({
   const Icon =
     activity.type === "formation"
       ? GraduationCap
-      : activity.type ===
-          "document"
+      : activity.type === "document"
         ? FileText
         : MessageSquareText;
 
@@ -1145,31 +1107,34 @@ function isAuditCompleted(
   );
 }
 
+/*
+ * Traduction des valeurs Supabase
+ * vers les libellés visibles par le client.
+ */
 function formatAuditStatus(
   status: string | null
 ) {
-  if (
-    status === "Terminé" ||
-    status === "completed"
-  ) {
-    return "Terminé";
+  if (!status) {
+    return "—";
   }
 
-  if (
-    status === "En cours" ||
-    status === "active"
-  ) {
-    return "En cours";
-  }
+  switch (status) {
+    case "in_progress":
+    case "active":
+    case "En cours":
+      return "En cours";
 
-  if (
-    status === "À venir" ||
-    status === "pending"
-  ) {
-    return "À venir";
-  }
+    case "completed":
+    case "Terminé":
+      return "Terminé";
 
-  return status || "—";
+    case "pending":
+    case "À venir":
+      return "À venir";
+
+    default:
+      return status;
+  }
 }
 
 function formatCompanyStatus(
@@ -1332,9 +1297,7 @@ function getAccompanimentMessage({
     hasAudit &&
     auditIsCompleted
   ) {
-    if (
-      hasTraining
-    ) {
+    if (hasTraining) {
       return `Votre audit IA est terminé. ${totalTranscripts} entretien${
         totalTranscripts > 1
           ? "s ont"
@@ -1364,9 +1327,7 @@ function getAccompanimentMessage({
     hasTraining &&
     !hasAudit
   ) {
-    if (
-      nextTrainingDate
-    ) {
+    if (nextTrainingDate) {
       return `Votre accompagnement est en cours. ${completedSessions} session${
         completedSessions > 1
           ? "s ont"

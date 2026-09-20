@@ -106,9 +106,6 @@ export default async function AuditPage({
 
   /*
    * 5 — AUDIT DU CLIENT
-   *
-   * audits.status devient la source de vérité
-   * pour le statut de l'audit.
    */
   const { data: audit, error: auditError } =
     await supabase
@@ -126,17 +123,8 @@ export default async function AuditPage({
   }
 
   /*
-   * On accepte temporairement les deux formats :
-   *
-   * Nouveau :
-   * "En cours"
-   * "Terminé"
-   *
-   * Ancien :
-   * "active"
-   * "completed"
-   *
-   * Cela évite de casser d'anciennes données.
+   * Compatibilité avec les différents formats
+   * de statut présents dans la base.
    */
   const auditIsCompleted =
     audit?.status === "Terminé" ||
@@ -447,9 +435,7 @@ export default async function AuditPage({
                     <div className="flex items-start justify-between gap-6">
                       <div className="min-w-0 flex-1">
                         <p className="font-semibold">
-                          {
-                            transcript.interviewee_name
-                          }
+                          {transcript.interviewee_name}
                         </p>
 
                         <p className="mt-1 text-sm text-muted-foreground">
@@ -462,18 +448,14 @@ export default async function AuditPage({
                             <FileText className="h-4 w-4 shrink-0" />
 
                             <span className="truncate">
-                              {
-                                transcript.file_name
-                              }
+                              {transcript.file_name}
                             </span>
                           </div>
                         )}
 
                         {transcript.signedUrl ? (
                           <a
-                            href={
-                              transcript.signedUrl
-                            }
+                            href={transcript.signedUrl}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="mt-3 inline-flex items-center gap-1.5 text-sm font-medium text-[#2814e8] transition hover:underline"
@@ -807,40 +789,28 @@ function AuditStatCard({
 /*                                  UTILS                                     */
 /* -------------------------------------------------------------------------- */
 
-function formatAuditStatus(
-  status: string | null
-) {
-  /*
-   * Nouveau format utilisé par l'admin.
-   */
-  if (status === "Terminé") {
-    return "Terminé";
+function formatAuditStatus(status: string | null) {
+  if (!status) {
+    return "—";
   }
 
-  if (status === "En cours") {
-    return "En cours";
-  }
+  switch (status) {
+    case "in_progress":
+    case "active":
+    case "En cours":
+      return "En cours";
 
-  if (status === "À venir") {
-    return "À venir";
-  }
+    case "completed":
+    case "Terminé":
+      return "Terminé";
 
-  /*
-   * Compatibilité avec les anciennes valeurs.
-   */
-  if (status === "completed") {
-    return "Terminé";
-  }
+    case "pending":
+    case "À venir":
+      return "À venir";
 
-  if (status === "active") {
-    return "En cours";
+    default:
+      return status;
   }
-
-  if (status === "pending") {
-    return "À venir";
-  }
-
-  return status || "—";
 }
 
 function formatDate(value: string) {

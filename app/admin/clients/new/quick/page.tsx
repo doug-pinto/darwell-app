@@ -154,17 +154,20 @@ export default function NewClientPage() {
               </select>
             </div>
 
-            <div className="flex justify-end gap-3">
-<Link
-  href="/admin/clients"
-  className="inline-flex h-9 items-center justify-center rounded-md border bg-background px-4 text-sm font-medium shadow-xs transition-colors hover:bg-accent hover:text-accent-foreground"
->
-  Annuler
-</Link>
+            <div className="flex items-center justify-end gap-3">
+              <Link
+                href="/admin/clients"
+                className="inline-flex h-10 items-center justify-center rounded-md border border-input bg-background px-4 text-sm font-medium shadow-xs transition-colors hover:bg-accent hover:text-accent-foreground"
+              >
+                Annuler
+              </Link>
 
-<Button type="submit">
-  Créer le client
-</Button>
+              <Button
+                type="submit"
+                className="h-10 px-4"
+              >
+                Créer le client
+              </Button>
             </div>
           </form>
         </CardContent>
