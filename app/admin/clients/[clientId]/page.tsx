@@ -1,5 +1,7 @@
 import Link from "next/link";
+
 import { revalidatePath } from "next/cache";
+
 import {
   ArrowLeft,
   ChevronDown,
@@ -12,6 +14,7 @@ import {
 } from "lucide-react";
 
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { DocumentsCard } from "@/components/documents-card";
 import { AuditReportUpload } from "@/components/audit-report-upload";
 import { DeleteClientUserButton } from "@/components/delete-client-user-button";
@@ -447,6 +450,48 @@ export default async function ClientPage({
       `Impossible de récupérer les utilisateurs : ${usersError.message}`
     );
   }
+
+  /*
+   * STATUT AUTH DES UTILISATEURS
+   *
+   * On regarde si l'utilisateur s'est déjà
+   * authentifié au moins une fois.
+   */
+  const adminSupabase = createAdminClient();
+
+  const companyUsersWithAuth =
+    await Promise.all(
+      (companyUsers ?? []).map(
+        async (profile) => {
+          const {
+            data: authData,
+            error: authError,
+          } =
+            await adminSupabase.auth.admin.getUserById(
+              profile.id
+            );
+
+          if (authError) {
+            console.error(
+              `Impossible de récupérer le statut Auth de ${profile.email}:`,
+              authError
+            );
+
+            return {
+              ...profile,
+              hasSignedIn: false,
+            };
+          }
+
+          return {
+            ...profile,
+            hasSignedIn: Boolean(
+              authData.user?.last_sign_in_at
+            ),
+          };
+        }
+      )
+    );
 
   /*
    * DOCUMENTS
@@ -1125,80 +1170,100 @@ export default async function ClientPage({
           </CardHeader>
 
           <CardContent className="pt-6">
-            {companyUsers &&
-            companyUsers.length > 0 ? (
+            {companyUsersWithAuth.length > 0 ? (
               <div className="space-y-3">
-                {companyUsers.map((user) => (
-                  <div
-                    key={user.id}
-                    className="rounded-xl border p-4"
-                  >
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="min-w-0">
-                        <p className="font-medium">
-                          {user.full_name ||
-                            user.email}
-                        </p>
+                {companyUsersWithAuth.map(
+                  (user) => (
+                    <div
+                      key={user.id}
+                      className="rounded-xl border p-4"
+                    >
+                      <div className="flex items-center justify-between gap-4">
+                        <div className="min-w-0">
+                          <p className="font-medium">
+                            {user.full_name ||
+                              user.email}
+                          </p>
 
-                        <p className="mt-1 truncate text-sm text-muted-foreground">
-                          {user.email}
-                        </p>
+                          <p className="mt-1 truncate text-sm text-muted-foreground">
+                            {user.email}
+                          </p>
 
-                        <p className="mt-1 text-xs text-muted-foreground">
-                          {user.role === "admin"
-                            ? "Administrateur"
-                            : "Client"}
-                        </p>
+                          {user.role === "client" ? (
+                            <div className="mt-2 flex items-center gap-2">
+                              <span
+                                className={`h-2 w-2 rounded-full ${
+                                  user.hasSignedIn
+                                    ? "bg-emerald-500"
+                                    : "bg-amber-400"
+                                }`}
+                              />
+
+                              <span className="text-xs font-medium text-muted-foreground">
+                                {user.hasSignedIn
+                                  ? "Actif"
+                                  : "Invitation en attente"}
+                              </span>
+                            </div>
+                          ) : (
+                            <p className="mt-2 text-xs text-muted-foreground">
+                              Administrateur
+                            </p>
+                          )}
+                        </div>
+
+                        {user.email &&
+                          user.role ===
+                            "client" && (
+                            <div className="flex shrink-0 items-center gap-2">
+                              {!user.hasSignedIn && (
+                                <form
+                                  action={
+                                    sendUserAccess
+                                  }
+                                >
+                                  <input
+                                    type="hidden"
+                                    name="email"
+                                    value={
+                                      user.email
+                                    }
+                                  />
+
+                                  <input
+                                    type="hidden"
+                                    name="company_id"
+                                    value={
+                                      companyId
+                                    }
+                                  />
+
+                                  <button
+                                    type="submit"
+                                    className="inline-flex h-9 shrink-0 items-center justify-center gap-2 rounded-lg border bg-background px-3 text-sm font-medium transition-colors hover:bg-muted"
+                                  >
+                                    <Mail className="h-4 w-4" />
+                                    Renvoyer
+                                    l&apos;invitation
+                                  </button>
+                                </form>
+                              )}
+
+                              <DeleteClientUserButton
+                                userId={user.id}
+                                companyId={companyId}
+                                userName={
+                                  user.full_name ||
+                                  user.email ||
+                                  "cet utilisateur"
+                                }
+                              />
+                            </div>
+                          )}
                       </div>
-
-                      {user.email &&
-                        user.role ===
-                          "client" && (
-                          <div className="flex shrink-0 items-center gap-2">
-                            <form
-                              action={
-                                sendUserAccess
-                              }
-                            >
-                              <input
-                                type="hidden"
-                                name="email"
-                                value={
-                                  user.email
-                                }
-                              />
-
-                              <input
-                                type="hidden"
-                                name="company_id"
-                                value={
-                                  companyId
-                                }
-                              />
-
-                              <button
-                                type="submit"
-                                className="inline-flex h-9 shrink-0 items-center justify-center gap-2 rounded-lg border bg-background px-3 text-sm font-medium transition-colors hover:bg-muted"
-                              >
-                                <Mail className="h-4 w-4" />
-                                Envoyer l&apos;accès
-                              </button>
-                            </form>
-
-                            <DeleteClientUserButton
-                              userId={user.id}
-                              companyId={companyId}
-                              userName={
-                                user.full_name ||
-                                user.email ||
-                                "cet utilisateur"
-                              }
-                            />
-                          </div>
-                        )}
                     </div>
-                  </div>
-                ))}
+                  )
+                )}
               </div>
             ) : (
               <p className="text-sm text-muted-foreground">
