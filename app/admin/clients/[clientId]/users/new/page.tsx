@@ -19,10 +19,11 @@ export default async function NewUserPage({
 }) {
   const { clientId } = await params;
 
-  // Connexion Supabase avec la session de l'utilisateur connecté.
   const supabase = await createClient();
 
-  // Récupération de l'entreprise concernée.
+  /*
+   * ENTREPRISE
+   */
   const { data: company, error } = await supabase
     .from("companies")
     .select("id, name, slug")
@@ -40,10 +41,15 @@ export default async function NewUserPage({
   const companyId = company.id;
   const companySlug = company.slug;
 
+  /*
+   * INVITER UN UTILISATEUR
+   */
   async function inviteUser(formData: FormData) {
     "use server";
 
-    // 1. Récupérer l'utilisateur qui effectue l'action.
+    /*
+     * 1. Vérifier l'utilisateur connecté
+     */
     const supabase = await createClient();
 
     const {
@@ -52,22 +58,34 @@ export default async function NewUserPage({
     } = await supabase.auth.getUser();
 
     if (userError || !user) {
-      throw new Error("Vous devez être connecté.");
+      throw new Error(
+        "Vous devez être connecté."
+      );
     }
 
-    // 2. Vérifier que l'utilisateur connecté est administrateur.
-    const { data: profile, error: profileError } =
-      await supabase
-        .from("profiles")
-        .select("role")
-        .eq("id", user.id)
-        .single();
+    /*
+     * 2. Vérifier que l'utilisateur connecté
+     * est administrateur
+     */
+    const {
+      data: profile,
+      error: profileError,
+    } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", user.id)
+      .single();
 
-    if (profileError || profile?.role !== "admin") {
+    if (
+      profileError ||
+      profile?.role !== "admin"
+    ) {
       throw new Error("Accès refusé.");
     }
 
-    // 3. Récupérer les données du formulaire.
+    /*
+     * 3. Données du formulaire
+     */
     const fullName = formData
       .get("full_name")
       ?.toString()
@@ -85,15 +103,231 @@ export default async function NewUserPage({
       );
     }
 
-    // 4. Créer le client Supabase privilégié.
-    const adminSupabase = createAdminClient();
+    /*
+     * 4. Client Supabase privilégié
+     */
+    const adminSupabase =
+      createAdminClient();
 
-    // 5. Inviter l'utilisateur via Supabase Auth.
-    const { data, error: inviteError } =
+    /*
+     * 5. Vérifier si un profil Darwell
+     * existe déjà avec cette adresse email
+     */
+    const {
+      data: existingProfile,
+      error: existingProfileError,
+    } = await adminSupabase
+      .from("profiles")
+      .select(
+        "id, email, full_name, role, company_id"
+      )
+      .eq("email", email)
+      .maybeSingle();
+
+    if (existingProfileError) {
+      throw new Error(
+        `Impossible de vérifier l'utilisateur : ${existingProfileError.message}`
+      );
+    }
+
+    /*
+     * Si le profil existe déjà pour
+     * une autre entreprise, on bloque.
+     *
+     * Cela évite de déplacer accidentellement
+     * un utilisateur d'un client vers un autre.
+     */
+    if (
+      existingProfile &&
+      existingProfile.company_id &&
+      existingProfile.company_id !== companyId
+    ) {
+      throw new Error(
+        "Un utilisateur avec cette adresse email est déjà associé à une autre entreprise."
+      );
+    }
+
+    /*
+     * Si le compte existe déjà et qu'il
+     * s'agit d'un administrateur, on bloque.
+     */
+    if (
+      existingProfile?.role === "admin"
+    ) {
+      throw new Error(
+        "Cette adresse email appartient à un administrateur."
+      );
+    }
+
+    /*
+     * 6. URL de redirection
+     */
+    const siteUrl =
+      process.env.NEXT_PUBLIC_SITE_URL;
+
+    if (!siteUrl) {
+      throw new Error(
+        "NEXT_PUBLIC_SITE_URL n'est pas configurée."
+      );
+    }
+
+    const redirectTo =
+      `${siteUrl}/reset-password`;
+
+    /*
+     * 7. CAS 1 :
+     * Le profil Darwell existe déjà.
+     *
+     * Le compte Auth existe donc normalement
+     * déjà également.
+     *
+     * On met à jour le profil et on renvoie
+     * simplement un email d'accès.
+     */
+    if (existingProfile) {
+      const { error: updateError } =
+        await adminSupabase
+          .from("profiles")
+          .update({
+            full_name: fullName,
+            role: "client",
+            company_id: companyId,
+          })
+          .eq("id", existingProfile.id);
+
+      if (updateError) {
+        throw new Error(
+          `Impossible de mettre à jour le profil : ${updateError.message}`
+        );
+      }
+
+      const { error: accessError } =
+        await adminSupabase.auth.resetPasswordForEmail(
+          email,
+          {
+            redirectTo,
+          }
+        );
+
+      if (accessError) {
+        throw new Error(
+          `Impossible d'envoyer l'accès : ${accessError.message}`
+        );
+      }
+
+      redirect(
+        `/admin/clients/${companySlug}`
+      );
+    }
+
+    /*
+     * 8. Vérifier si l'adresse existe déjà
+     * dans Supabase Auth mais sans profil.
+     *
+     * listUsers est paginé. Pour le MVP,
+     * on parcourt les pages jusqu'à trouver
+     * l'adresse ou atteindre la fin.
+     */
+    let existingAuthUser:
+      | {
+          id: string;
+          email?: string;
+        }
+      | undefined;
+
+    let page = 1;
+    const perPage = 1000;
+
+    while (!existingAuthUser) {
+      const {
+        data: usersData,
+        error: usersError,
+      } =
+        await adminSupabase.auth.admin.listUsers({
+          page,
+          perPage,
+        });
+
+      if (usersError) {
+        throw new Error(
+          `Impossible de vérifier les comptes existants : ${usersError.message}`
+        );
+      }
+
+      existingAuthUser =
+        usersData.users.find(
+          (authUser) =>
+            authUser.email?.toLowerCase() ===
+            email
+        );
+
+      if (
+        existingAuthUser ||
+        usersData.users.length < perPage
+      ) {
+        break;
+      }
+
+      page += 1;
+    }
+
+    /*
+     * 9. CAS 2 :
+     * Le compte Auth existe mais aucun
+     * profil Darwell n'existe.
+     */
+    if (existingAuthUser) {
+      const { error: profileInsertError } =
+        await adminSupabase
+          .from("profiles")
+          .upsert({
+            id: existingAuthUser.id,
+            email,
+            full_name: fullName,
+            role: "client",
+            company_id: companyId,
+          });
+
+      if (profileInsertError) {
+        throw new Error(
+          `Impossible de créer le profil : ${profileInsertError.message}`
+        );
+      }
+
+      const { error: accessError } =
+        await adminSupabase.auth.resetPasswordForEmail(
+          email,
+          {
+            redirectTo,
+          }
+        );
+
+      if (accessError) {
+        throw new Error(
+          `Le profil a été créé, mais impossible d'envoyer l'accès : ${accessError.message}`
+        );
+      }
+
+      redirect(
+        `/admin/clients/${companySlug}`
+      );
+    }
+
+    /*
+     * 10. CAS 3 :
+     * L'utilisateur n'existe ni dans
+     * profiles ni dans Supabase Auth.
+     *
+     * On crée donc une véritable invitation.
+     */
+    const {
+      data,
+      error: inviteError,
+    } =
       await adminSupabase.auth.admin.inviteUserByEmail(
         email,
         {
-          redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/reset-password`,
+          redirectTo,
           data: {
             full_name: fullName,
             company_id: companyId,
@@ -114,7 +348,9 @@ export default async function NewUserPage({
       );
     }
 
-    // 6. Créer ou mettre à jour le profil Darwell.
+    /*
+     * 11. Créer le profil Darwell
+     */
     const { error: profileInsertError } =
       await adminSupabase
         .from("profiles")
@@ -132,7 +368,9 @@ export default async function NewUserPage({
       );
     }
 
-    // 7. Retour vers la fiche du client.
+    /*
+     * 12. Retour vers la fiche client
+     */
     redirect(
       `/admin/clients/${companySlug}`
     );
