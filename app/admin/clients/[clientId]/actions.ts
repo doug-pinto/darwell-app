@@ -7,6 +7,44 @@ import { createAdminClient } from "@/lib/supabase/admin";
 
 /*
  * ---------------------------------------------------
+ * VÉRIFIER QUE L'UTILISATEUR CONNECTÉ EST ADMIN
+ * ---------------------------------------------------
+ */
+
+async function requireAdmin() {
+  const supabase = await createClient();
+
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
+
+  if (userError || !user) {
+    throw new Error("Vous devez être connecté.");
+  }
+
+  const { data: profile, error: profileError } =
+    await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", user.id)
+      .single();
+
+  if (
+    profileError ||
+    !profile ||
+    profile.role !== "admin"
+  ) {
+    throw new Error("Accès refusé.");
+  }
+
+  return {
+    user,
+  };
+}
+
+/*
+ * ---------------------------------------------------
  * SUPPRIMER UN DOCUMENT
  * ---------------------------------------------------
  */
@@ -19,35 +57,14 @@ export async function deleteDocument({
   documentId: string;
   companyId: string;
   storagePath: string | null;
-}) {
-  // 1. Vérifier l'utilisateur connecté.
-  const supabase = await createClient();
+}): Promise<void> {
+  // 1. Vérifier que l'utilisateur connecté est admin.
+  await requireAdmin();
 
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser();
-
-  if (userError || !user) {
-    throw new Error("Vous devez être connecté.");
-  }
-
-  // 2. Vérifier que l'utilisateur est administrateur.
-  const { data: profile, error: profileError } =
-    await supabase
-      .from("profiles")
-      .select("role")
-      .eq("id", user.id)
-      .single();
-
-  if (profileError || profile?.role !== "admin") {
-    throw new Error("Accès refusé.");
-  }
-
-  // 3. Utiliser le client Supabase privilégié.
+  // 2. Utiliser le client Supabase privilégié.
   const adminSupabase = createAdminClient();
 
-  // 4. Vérifier que le document existe
+  // 3. Vérifier que le document existe
   // et appartient bien à l'entreprise.
   const { data: document, error: documentError } =
     await adminSupabase
@@ -66,7 +83,7 @@ export async function deleteDocument({
     );
   }
 
-  // 5. Supprimer le fichier dans Supabase Storage.
+  // 4. Supprimer le fichier dans Supabase Storage.
   const pathToDelete =
     document.storage_path ?? storagePath;
 
@@ -83,7 +100,7 @@ export async function deleteDocument({
     }
   }
 
-  // 6. Supprimer la ligne dans la table documents.
+  // 5. Supprimer la ligne dans la table documents.
   const { error: deleteError } =
     await adminSupabase
       .from("documents")
@@ -97,9 +114,10 @@ export async function deleteDocument({
     );
   }
 
-  return {
-    success: true,
-  };
+  // 6. Rafraîchir l'espace admin.
+  revalidatePath("/admin/clients", "layout");
+
+  return;
 }
 
 /*
@@ -110,9 +128,7 @@ export async function deleteDocument({
 
 export async function sendUserAccess(
   formData: FormData
-) {
-  console.log("=== SEND USER ACCESS ===");
-
+): Promise<void> {
   // 1. Récupérer les informations du formulaire.
   const email = formData
     .get("email")
@@ -124,9 +140,6 @@ export async function sendUserAccess(
     .get("company_id")
     ?.toString()
     .trim();
-
-  console.log("Email reçu :", email);
-  console.log("Company ID reçu :", companyId);
 
   if (!email) {
     throw new Error(
@@ -140,64 +153,14 @@ export async function sendUserAccess(
     );
   }
 
-  // 2. Vérifier l'utilisateur connecté.
-  const supabase = await createClient();
+  // 2. Vérifier que l'utilisateur connecté est admin.
+  await requireAdmin();
 
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser();
-
-  if (userError) {
-    console.error(
-      "Erreur récupération utilisateur :",
-      userError
-    );
-  }
-
-  if (!user) {
-    throw new Error(
-      "Vous devez être connecté."
-    );
-  }
-
-  console.log(
-    "Administrateur connecté :",
-    user.email
-  );
-
-  // 3. Vérifier que l'utilisateur connecté
-  // est bien administrateur.
-  const {
-    data: profile,
-    error: profileError,
-  } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .single();
-
-  if (profileError) {
-    console.error(
-      "Erreur récupération profil admin :",
-      profileError
-    );
-  }
-
-  if (profile?.role !== "admin") {
-    throw new Error("Accès refusé.");
-  }
-
-  console.log(
-    "Rôle administrateur vérifié."
-  );
-
-  // 4. Créer le client Supabase privilégié.
+  // 3. Créer le client Supabase privilégié.
   const adminSupabase = createAdminClient();
 
-  // 5. Vérifier que l'utilisateur auquel
-  // on veut envoyer l'accès appartient bien
-  // à l'entreprise.
+  // 4. Vérifier que l'utilisateur cible
+  // appartient bien à l'entreprise.
   const {
     data: targetProfile,
     error: targetProfileError,
@@ -209,30 +172,16 @@ export async function sendUserAccess(
     .maybeSingle();
 
   if (targetProfileError) {
-    console.error(
-      "Erreur récupération utilisateur cible :",
-      targetProfileError
-    );
-
     throw new Error(
       `Impossible de vérifier l'utilisateur : ${targetProfileError.message}`
     );
   }
 
   if (!targetProfile) {
-    console.error(
-      "Aucun profil correspondant trouvé."
-    );
-
     throw new Error(
       "Cet utilisateur n'appartient pas à cette entreprise."
     );
   }
-
-  console.log(
-    "Utilisateur cible trouvé :",
-    targetProfile.email
-  );
 
   if (targetProfile.role !== "client") {
     throw new Error(
@@ -240,14 +189,9 @@ export async function sendUserAccess(
     );
   }
 
-  // 6. Vérifier l'URL de redirection.
+  // 5. Vérifier l'URL de l'application.
   const siteUrl =
     process.env.NEXT_PUBLIC_SITE_URL;
-
-  console.log(
-    "NEXT_PUBLIC_SITE_URL :",
-    siteUrl
-  );
 
   if (!siteUrl) {
     throw new Error(
@@ -258,17 +202,10 @@ export async function sendUserAccess(
   const redirectTo =
     `${siteUrl}/reset-password`;
 
-  console.log(
-    "URL de redirection :",
-    redirectTo
-  );
-
-  // 7. Envoyer l'email d'accès.
-  console.log(
-    "Envoi de l'email d'accès à :",
-    email
-  );
-
+  // 6. Envoyer / renvoyer l'email d'accès.
+  //
+  // On conserve resetPasswordForEmail car c'est
+  // le fonctionnement déjà utilisé par l'application.
   const { error: resetError } =
     await adminSupabase.auth.resetPasswordForEmail(
       email,
@@ -278,24 +215,13 @@ export async function sendUserAccess(
     );
 
   if (resetError) {
-    console.error(
-      "Erreur Supabase lors de l'envoi :",
-      resetError
-    );
-
     throw new Error(
       `Impossible d'envoyer l'accès : ${resetError.message}`
     );
   }
 
-  console.log(
-    "Email d'accès envoyé avec succès à :",
-    email
-  );
-
-  console.log(
-    "=== SEND USER ACCESS SUCCESS ==="
-  );
+  // 7. Rafraîchir l'espace admin.
+  revalidatePath("/admin/clients", "layout");
 
   return;
 }
@@ -308,7 +234,7 @@ export async function sendUserAccess(
 
 export async function deleteClientUser(
   formData: FormData
-) {
+): Promise<void> {
   // 1. Récupérer les informations du formulaire.
   const userId = formData
     .get("user_id")
@@ -332,42 +258,13 @@ export async function deleteClientUser(
     );
   }
 
-  // 2. Vérifier l'utilisateur connecté.
-  const supabase = await createClient();
+  // 2. Vérifier que l'utilisateur connecté est admin.
+  const { user } = await requireAdmin();
 
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser();
-
-  if (userError || !user) {
-    throw new Error(
-      "Vous devez être connecté."
-    );
-  }
-
-  // 3. Vérifier que l'utilisateur connecté
-  // est bien administrateur.
-  const {
-    data: profile,
-    error: profileError,
-  } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .single();
-
-  if (
-    profileError ||
-    profile?.role !== "admin"
-  ) {
-    throw new Error("Accès refusé.");
-  }
-
-  // 4. Créer le client Supabase privilégié.
+  // 3. Créer le client Supabase privilégié.
   const adminSupabase = createAdminClient();
 
-  // 5. Vérifier que l'utilisateur à supprimer
+  // 4. Vérifier que l'utilisateur à supprimer
   // appartient bien à cette entreprise.
   const {
     data: targetProfile,
@@ -407,22 +304,7 @@ export async function deleteClientUser(
     );
   }
 
-  // 6. Supprimer le profil associé.
-  const { error: profileDeleteError } =
-    await adminSupabase
-      .from("profiles")
-      .delete()
-      .eq("id", userId)
-      .eq("company_id", companyId);
-
-  if (profileDeleteError) {
-    throw new Error(
-      `Impossible de supprimer le profil : ${profileDeleteError.message}`
-    );
-  }
-
-  // 7. Supprimer définitivement
-  // l'utilisateur de Supabase Auth.
+  // 5. Supprimer d'abord l'utilisateur Supabase Auth.
   const { error: authDeleteError } =
     await adminSupabase.auth.admin.deleteUser(
       userId
@@ -434,8 +316,21 @@ export async function deleteClientUser(
     );
   }
 
-  // 8. Forcer Next.js à rafraîchir
-  // les données de l'espace clients admin.
+  // 6. Supprimer le profil associé.
+  const { error: profileDeleteError } =
+    await adminSupabase
+      .from("profiles")
+      .delete()
+      .eq("id", userId)
+      .eq("company_id", companyId);
+
+  if (profileDeleteError) {
+    throw new Error(
+      `Le compte Auth a été supprimé, mais le profil n'a pas pu être supprimé : ${profileDeleteError.message}`
+    );
+  }
+
+  // 7. Rafraîchir l'espace admin.
   revalidatePath("/admin/clients", "layout");
 
   return;
