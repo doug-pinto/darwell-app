@@ -1,6 +1,5 @@
 "use client";
 
-import { useSearchParams } from "next/navigation";
 import { ArrowRight } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -13,20 +12,20 @@ import {
 } from "@/components/ui/card";
 
 export default function ActivatePage() {
-  const searchParams = useSearchParams();
-
-  const confirmationUrl =
-    searchParams.get("confirmation_url");
-
   function handleActivation() {
+    const searchParams = new URLSearchParams(
+      window.location.search
+    );
+
+    const confirmationUrl =
+      searchParams.get("confirmation_url");
+
     if (!confirmationUrl) {
       return;
     }
 
     window.location.href = confirmationUrl;
   }
-
-  const hasValidLink = Boolean(confirmationUrl);
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-muted/30 p-6">
@@ -48,27 +47,14 @@ export default function ActivatePage() {
         </CardHeader>
 
         <CardContent>
-          {hasValidLink ? (
-            <Button
-              type="button"
-              className="h-10 w-full"
-              onClick={handleActivation}
-            >
-              Activer mon espace
-              <ArrowRight className="ml-2 h-4 w-4" />
-            </Button>
-          ) : (
-            <div className="space-y-4">
-              <p className="text-sm text-destructive">
-                Ce lien d&apos;activation est invalide.
-              </p>
-
-              <p className="text-sm text-muted-foreground">
-                Demandez à Darwell de vous envoyer une
-                nouvelle invitation.
-              </p>
-            </div>
-          )}
+          <Button
+            type="button"
+            className="h-10 w-full"
+            onClick={handleActivation}
+          >
+            Activer mon espace
+            <ArrowRight className="ml-2 h-4 w-4" />
+          </Button>
         </CardContent>
       </Card>
     </main>
