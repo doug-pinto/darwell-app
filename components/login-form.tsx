@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2 } from "lucide-react";
+import { Eye, EyeOff, Loader2 } from "lucide-react";
 
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -17,7 +17,31 @@ export function LoginForm() {
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
 
-  const isAuthenticating = loading || googleLoading;
+  const [microsoftLoading, setMicrosoftLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+
+  const isAuthenticating = loading || googleLoading || microsoftLoading;
+
+  async function handleMicrosoftLogin() {
+    setMicrosoftLoading(true);
+    setError("");
+    setMessage("");
+
+    const supabase = createClient();
+
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "azure",
+      options: {
+        scopes: "email",
+        redirectTo: `${window.location.origin}/auth/callback`,
+      },
+    });
+
+    if (error) {
+      setError(`Erreur Microsoft : ${error.message}`);
+      setMicrosoftLoading(false);
+    }
+  }
 
   async function handleGoogleLogin() {
     setGoogleLoading(true);
@@ -143,6 +167,27 @@ export function LoginForm() {
         )}
       </Button>
 
+      {/* Microsoft */}
+      <Button
+        type="button"
+        variant="outline"
+        onClick={handleMicrosoftLogin}
+        disabled={isAuthenticating}
+        className="mt-3 h-[50px] w-full rounded-xl border-[#dfe4ec] bg-white text-base font-medium text-[#111827] hover:bg-[#f8fafc] disabled:cursor-not-allowed disabled:opacity-60"
+      >
+        {microsoftLoading ? (
+          <>
+            <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+            Connexion...
+          </>
+        ) : (
+          <>
+            <MicrosoftIcon />
+            Continuer avec Microsoft
+          </>
+        )}
+      </Button>
+
       {/* Separator */}
       <div className="my-7 flex items-center gap-4">
         <div className="h-px flex-1 bg-[#e3e8ef]" />
@@ -190,16 +235,36 @@ export function LoginForm() {
             </button>
           </div>
 
-          <input
-            id="password"
-            type="password"
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            required
-            disabled={isAuthenticating}
-            autoComplete="current-password"
-            className="h-[50px] w-full rounded-xl border border-[#dfe4ec] bg-white px-4 text-sm outline-none transition focus:border-[#9587ff] focus:ring-2 focus:ring-[#9587ff]/15 disabled:cursor-not-allowed disabled:opacity-60"
-          />
+          <div className="relative">
+            <input
+              id="password"
+              type={showPassword ? "text" : "password"}
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              required
+              disabled={isAuthenticating}
+              autoComplete="current-password"
+              className="h-[50px] w-full rounded-xl border border-[#dfe4ec] bg-white pl-4 pr-12 text-sm outline-none transition focus:border-[#9587ff] focus:ring-2 focus:ring-[#9587ff]/15 disabled:cursor-not-allowed disabled:opacity-60"
+            />
+
+            <button
+              type="button"
+              onClick={() => setShowPassword((visible) => !visible)}
+              disabled={isAuthenticating}
+              aria-label={
+                showPassword
+                  ? "Masquer le mot de passe"
+                  : "Afficher le mot de passe"
+              }
+              className="absolute inset-y-0 right-0 flex w-12 items-center justify-center text-[#9aa8bf] transition hover:text-[#111827] disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {showPassword ? (
+                <EyeOff className="h-5 w-5" />
+              ) : (
+                <Eye className="h-5 w-5" />
+              )}
+            </button>
+          </div>
         </div>
 
         {error && <p className="text-sm text-red-600">{error}</p>}
@@ -222,6 +287,21 @@ export function LoginForm() {
         </Button>
       </form>
     </div>
+  );
+}
+
+function MicrosoftIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className="mr-2 h-5 w-5"
+      aria-hidden="true"
+    >
+      <path fill="#F25022" d="M2 2h9.5v9.5H2z" />
+      <path fill="#7FBA00" d="M12.5 2H22v9.5h-9.5z" />
+      <path fill="#00A4EF" d="M2 12.5h9.5V22H2z" />
+      <path fill="#FFB900" d="M12.5 12.5H22V22h-9.5z" />
+    </svg>
   );
 }
 
