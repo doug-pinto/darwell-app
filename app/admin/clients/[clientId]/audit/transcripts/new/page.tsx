@@ -1,9 +1,13 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ArrowLeft, FileUp } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 
 import { createClient } from "@/lib/supabase/server";
-import { Button } from "@/components/ui/button";
+import {
+  TranscriptCancelLink,
+  TranscriptFileField,
+  TranscriptSubmitButton,
+} from "@/components/transcript-form-controls";
 import {
   Card,
   CardContent,
@@ -269,51 +273,15 @@ export default async function NewTranscriptPage({
                 Transcript
               </label>
 
-              <label
-                htmlFor="transcript_file"
-                className="flex cursor-pointer flex-col items-center justify-center rounded-2xl border border-dashed bg-muted/20 px-6 py-12 text-center transition hover:bg-muted/40"
-              >
-                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#2814e8]/10 text-[#2814e8]">
-                  <FileUp className="h-6 w-6" />
-                </div>
-
-                <p className="mt-4 text-sm font-medium">
-                  Importer le transcript de l'entretien
-                </p>
-
-                <p className="mt-1 text-xs text-muted-foreground">
-                  PDF ou DOCX · 10 Mo maximum
-                </p>
-
-                <span className="mt-5 inline-flex h-10 items-center justify-center rounded-lg border bg-white px-4 text-sm font-medium">
-                  Choisir un fichier
-                </span>
-
-                <input
-                  id="transcript_file"
-                  name="transcript_file"
-                  type="file"
-                  required
-                  accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                  className="sr-only"
-                />
-              </label>
+              <TranscriptFileField />
             </div>
 
             <div className="flex justify-end gap-3 border-t pt-6">
-              <Link
+              <TranscriptCancelLink
                 href={`/admin/clients/${companySlug}`}
-                className="inline-flex h-10 items-center justify-center rounded-lg border bg-background px-4 text-sm font-medium hover:bg-muted"
-              >
-                Annuler
-              </Link>
+              />
 
-              <Button
-                type="submit"
-                className="h-10 rounded-lg px-4"
-              >
-                Ajouter le transcript
-              </Button>
+              <TranscriptSubmitButton />
             </div>
           </form>
         </CardContent>
