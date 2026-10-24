@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2 } from "lucide-react";
+import { Eye, EyeOff, Loader2 } from "lucide-react";
 
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -20,6 +20,9 @@ export default function ResetPasswordPage() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] =
     useState("");
+
+  const [showPassword, setShowPassword] =
+    useState(false);
 
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -268,22 +271,53 @@ export default function ResetPasswordPage() {
                 Nouveau mot de passe
               </label>
 
-              <input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(event) =>
-                  setPassword(
-                    event.target.value
-                  )
-                }
-                required
-                minLength={8}
-                disabled={
-                  !sessionReady || loading
-                }
-                className="w-full rounded-md border bg-background px-3 py-2 text-sm"
-              />
+              <div className="relative">
+                <input
+                  id="password"
+                  type={
+                    showPassword
+                      ? "text"
+                      : "password"
+                  }
+                  value={password}
+                  onChange={(event) =>
+                    setPassword(
+                      event.target.value
+                    )
+                  }
+                  required
+                  minLength={8}
+                  autoComplete="new-password"
+                  disabled={
+                    !sessionReady || loading
+                  }
+                  className="w-full rounded-md border bg-background py-2 pl-3 pr-10 text-sm"
+                />
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    setShowPassword(
+                      (visible) => !visible
+                    )
+                  }
+                  disabled={
+                    !sessionReady || loading
+                  }
+                  aria-label={
+                    showPassword
+                      ? "Masquer les mots de passe"
+                      : "Afficher les mots de passe"
+                  }
+                  className="absolute inset-y-0 right-0 flex w-10 items-center justify-center text-muted-foreground transition hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {showPassword ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
+                </button>
+              </div>
             </div>
 
             <div className="space-y-2">
@@ -294,22 +328,53 @@ export default function ResetPasswordPage() {
                 Confirmer le mot de passe
               </label>
 
-              <input
-                id="confirmPassword"
-                type="password"
-                value={confirmPassword}
-                onChange={(event) =>
-                  setConfirmPassword(
-                    event.target.value
-                  )
-                }
-                required
-                minLength={8}
-                disabled={
-                  !sessionReady || loading
-                }
-                className="w-full rounded-md border bg-background px-3 py-2 text-sm"
-              />
+              <div className="relative">
+                <input
+                  id="confirmPassword"
+                  type={
+                    showPassword
+                      ? "text"
+                      : "password"
+                  }
+                  value={confirmPassword}
+                  onChange={(event) =>
+                    setConfirmPassword(
+                      event.target.value
+                    )
+                  }
+                  required
+                  minLength={8}
+                  autoComplete="new-password"
+                  disabled={
+                    !sessionReady || loading
+                  }
+                  className="w-full rounded-md border bg-background py-2 pl-3 pr-10 text-sm"
+                />
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    setShowPassword(
+                      (visible) => !visible
+                    )
+                  }
+                  disabled={
+                    !sessionReady || loading
+                  }
+                  aria-label={
+                    showPassword
+                      ? "Masquer les mots de passe"
+                      : "Afficher les mots de passe"
+                  }
+                  className="absolute inset-y-0 right-0 flex w-10 items-center justify-center text-muted-foreground transition hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {showPassword ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
+                </button>
+              </div>
             </div>
 
             {error && (
